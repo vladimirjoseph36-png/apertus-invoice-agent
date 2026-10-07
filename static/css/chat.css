@@ -821,3 +821,285 @@ body.light-mode .hud {
 body.light-mode .hud-line {
   background: var(--swiss-red);
 }
+
+/* ======================================================================
+   BLUE FLAME MODE 🔥💙
+   ====================================================================== */
+
+body.blue-flame {
+  --swiss-red: #00b4ff;
+  --swiss-red-glow: rgba(0, 180, 255, 0.5);
+  --swiss-red-bright: #33ccff;
+  --orange: #00e5ff;
+  --yellow: #66f0ff;
+  --border-fire: rgba(0, 180, 255, 0.25);
+  --bg-0: #030812;
+  --bg-1: #0a1525;
+  --bg-2: #101d33;
+}
+
+body.blue-flame {
+  background: #030812;
+}
+
+body.blue-flame .app {
+  background: linear-gradient(180deg, rgba(10, 21, 37, 0.92), rgba(3, 8, 18, 0.96));
+  box-shadow:
+    0 0 0 1px rgba(0, 180, 255, 0.1),
+    0 0 100px rgba(0, 180, 255, 0.15),
+    0 40px 120px -20px rgba(0, 0, 0, 0.98);
+}
+
+body.blue-flame header {
+  background: rgba(3, 8, 18, 0.5);
+}
+
+body.blue-flame .composer {
+  background: rgba(3, 8, 18, 0.5);
+}
+
+body.blue-flame .swiss-cross-small {
+  background: var(--swiss-red);
+  box-shadow:
+    0 0 15px var(--swiss-red-glow),
+    0 0 30px var(--swiss-red-glow);
+}
+
+body.blue-flame .cross-h-small,
+body.blue-flame .cross-v-small {
+  background: white;
+}
+
+body.blue-flame .label {
+  background: linear-gradient(135deg, #00b4ff, #00e5ff);
+}
+
+body.blue-flame .status-dot {
+  background: #00b4ff;
+  box-shadow: 0 0 10px #00b4ff;
+}
+
+body.blue-flame .hud {
+  color: #00b4ff;
+}
+
+body.blue-flame .hud-line {
+  background: #00b4ff;
+  box-shadow: 0 0 8px #00b4ff;
+}
+
+body.blue-flame .message.agent .avatar {
+  background: linear-gradient(135deg, #00b4ff, #00e5ff);
+  box-shadow: 0 0 15px rgba(0, 180, 255, 0.6);
+}
+
+body.blue-flame .message.agent .bubble {
+  background: rgba(0, 180, 255, 0.04);
+  border: 1px solid rgba(0, 180, 255, 0.15);
+  border-left: 2px solid #00b4ff;
+}
+
+body.blue-flame .message.user .bubble {
+  background: linear-gradient(135deg, rgba(0, 180, 255, 0.15), rgba(0, 229, 255, 0.08));
+  border: 1px solid rgba(0, 180, 255, 0.3);
+}
+
+body.blue-flame .bubble strong {
+  color: #33ccff;
+}
+
+body.blue-flame .bubble em {
+  color: #00e5ff;
+}
+
+body.blue-flame .input-wrap:focus-within {
+  border-color: rgba(0, 180, 255, 0.6);
+  box-shadow:
+    0 0 0 3px rgba(0, 180, 255, 0.08),
+    0 0 25px rgba(0, 180, 255, 0.08);
+}
+
+body.blue-flame .input-prompt {
+  color: #00b4ff;
+}
+
+body.blue-flame #send {
+  background: linear-gradient(135deg, #00b4ff, #00e5ff);
+  box-shadow:
+    0 0 18px rgba(0, 180, 255, 0.4),
+    0 4px 12px rgba(0, 229, 255, 0.2);
+}
+
+body.blue-flame #send:hover:not(:disabled) {
+  box-shadow:
+    0 0 35px rgba(0, 180, 255, 0.6),
+    0 8px 25px rgba(0, 229, 255, 0.3);
+}
+
+body.blue-flame .corner {
+  border-color: #00b4ff;
+}
+
+body.blue-flame .theme-toggle {
+  background: rgba(0, 180, 255, 0.1);
+  border-color: rgba(0, 180, 255, 0.3);
+}
+
+body.blue-flame .theme-toggle:hover {
+  background: rgba(0, 180, 255, 0.2);
+  border-color: #00b4ff;
+  box-shadow: 0 0 15px rgba(0, 180, 255, 0.5);
+}
+
+body.blue-flame .bg-glow {
+  background:
+    radial-gradient(circle at 15% 15%, rgba(0, 180, 255, 0.18), transparent 45%),
+    radial-gradient(circle at 85% 85%, rgba(0, 229, 255, 0.10), transparent 45%);
+}
+
+body.blue-flame .bg-grid {
+  background-image:
+    linear-gradient(rgba(0, 180, 255, 0.06) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0, 180, 255, 0.06) 1px, transparent 1px);
+}
+
+/* ======================================================================
+   BLUE FLAME MODE 🔥💙
+   ====================================================================== */
+
+body.blue-flame {
+  --swiss-red: #00b4ff;
+  --swiss-red-glow: rgba(0, 180, 255, 0.5);
+  --swiss-red-bright: #33ccff;
+  --orange: #00e5ff;
+  --yellow: #66f0ff;
+  --border-fire: rgba(0, 180, 255, 0.25);
+  --bg-0: #030812;
+  --bg-1: #0a1525;
+  --bg-2: #101d33;
+}
+
+body.blue-flame {
+  background: #030812;
+}
+
+body.blue-flame .app {
+  background: linear-gradient(180deg, rgba(10, 21, 37, 0.92), rgba(3, 8, 18, 0.96));
+  box-shadow:
+    0 0 0 1px rgba(0, 180, 255, 0.1),
+    0 0 100px rgba(0, 180, 255, 0.15),
+    0 40px 120px -20px rgba(0, 0, 0, 0.98);
+}
+
+body.blue-flame header {
+  background: rgba(3, 8, 18, 0.5);
+}
+
+body.blue-flame .composer {
+  background: rgba(3, 8, 18, 0.5);
+}
+
+body.blue-flame .swiss-cross-small {
+  background: var(--swiss-red);
+  box-shadow:
+    0 0 15px var(--swiss-red-glow),
+    0 0 30px var(--swiss-red-glow);
+}
+
+body.blue-flame .cross-h-small,
+body.blue-flame .cross-v-small {
+  background: white;
+}
+
+body.blue-flame .label {
+  background: linear-gradient(135deg, #00b4ff, #00e5ff);
+}
+
+body.blue-flame .status-dot {
+  background: #00b4ff;
+  box-shadow: 0 0 10px #00b4ff;
+}
+
+body.blue-flame .hud {
+  color: #00b4ff;
+}
+
+body.blue-flame .hud-line {
+  background: #00b4ff;
+  box-shadow: 0 0 8px #00b4ff;
+}
+
+body.blue-flame .message.agent .avatar {
+  background: linear-gradient(135deg, #00b4ff, #00e5ff);
+  box-shadow: 0 0 15px rgba(0, 180, 255, 0.6);
+}
+
+body.blue-flame .message.agent .bubble {
+  background: rgba(0, 180, 255, 0.04);
+  border: 1px solid rgba(0, 180, 255, 0.15);
+  border-left: 2px solid #00b4ff;
+}
+
+body.blue-flame .message.user .bubble {
+  background: linear-gradient(135deg, rgba(0, 180, 255, 0.15), rgba(0, 229, 255, 0.08));
+  border: 1px solid rgba(0, 180, 255, 0.3);
+}
+
+body.blue-flame .bubble strong {
+  color: #33ccff;
+}
+
+body.blue-flame .bubble em {
+  color: #00e5ff;
+}
+
+body.blue-flame .input-wrap:focus-within {
+  border-color: rgba(0, 180, 255, 0.6);
+  box-shadow:
+    0 0 0 3px rgba(0, 180, 255, 0.08),
+    0 0 25px rgba(0, 180, 255, 0.08);
+}
+
+body.blue-flame .input-prompt {
+  color: #00b4ff;
+}
+
+body.blue-flame #send {
+  background: linear-gradient(135deg, #00b4ff, #00e5ff);
+  box-shadow:
+    0 0 18px rgba(0, 180, 255, 0.4),
+    0 4px 12px rgba(0, 229, 255, 0.2);
+}
+
+body.blue-flame #send:hover:not(:disabled) {
+  box-shadow:
+    0 0 35px rgba(0, 180, 255, 0.6),
+    0 8px 25px rgba(0, 229, 255, 0.3);
+}
+
+body.blue-flame .corner {
+  border-color: #00b4ff;
+}
+
+body.blue-flame .theme-toggle {
+  background: rgba(0, 180, 255, 0.1);
+  border-color: rgba(0, 180, 255, 0.3);
+}
+
+body.blue-flame .theme-toggle:hover {
+  background: rgba(0, 180, 255, 0.2);
+  border-color: #00b4ff;
+  box-shadow: 0 0 15px rgba(0, 180, 255, 0.5);
+}
+
+body.blue-flame .bg-glow {
+  background:
+    radial-gradient(circle at 15% 15%, rgba(0, 180, 255, 0.18), transparent 45%),
+    radial-gradient(circle at 85% 85%, rgba(0, 229, 255, 0.10), transparent 45%);
+}
+
+body.blue-flame .bg-grid {
+  background-image:
+    linear-gradient(rgba(0, 180, 255, 0.06) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0, 180, 255, 0.06) 1px, transparent 1px);
+}

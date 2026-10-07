@@ -528,3 +528,36 @@ if (input) {
     applyTheme(next);
   });
 })();
+
+/* --------------------------------------------------------------------------
+   0. THEME TOGGLE — 3 modes: Dark / Light / Blue Flame
+   -------------------------------------------------------------------------- */
+
+(function themeToggle() {
+  const toggle = document.getElementById('theme-toggle');
+  const icon = toggle ? toggle.querySelector('.theme-icon') : null;
+
+  if (!toggle || !icon) return;
+
+  const THEMES = ['dark', 'light', 'blue-flame'];
+  const ICONS = { 'dark': '🌙', 'light': '☀️', 'blue-flame': '💙' };
+  const CLASSES = ['light-mode', 'blue-flame'];
+
+  let currentIndex = THEMES.indexOf(localStorage.getItem('apertus-theme') || 'dark');
+  if (currentIndex === -1) currentIndex = 0;
+
+  function applyTheme(theme) {
+    document.body.classList.remove(...CLASSES);
+    if (theme === 'light') document.body.classList.add('light-mode');
+    if (theme === 'blue-flame') document.body.classList.add('blue-flame');
+    icon.textContent = ICONS[theme];
+    localStorage.setItem('apertus-theme', theme);
+  }
+
+  applyTheme(THEMES[currentIndex]);
+
+  toggle.addEventListener('click', () => {
+    currentIndex = (currentIndex + 1) % THEMES.length;
+    applyTheme(THEMES[currentIndex]);
+  });
+})();
