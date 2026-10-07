@@ -1,0 +1,109 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Apertus Invoice Assistant — Swiss AI</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/static/css/chat.css">
+</head>
+<body>
+
+  <!-- ============================================================
+       BACKGROUND LAYERS — Circuits + Neurons + Fire
+       ============================================================ -->
+  <canvas id="circuits-canvas" class="circuits-canvas"></canvas>
+  <canvas id="neural-canvas" class="neural-canvas"></canvas>
+  <canvas id="fire-canvas" class="fire-canvas"></canvas>
+  <div class="bg-layer bg-grid"></div>
+  <div class="bg-layer bg-scanlines"></div>
+  <div class="bg-layer bg-glow"></div>
+  <div class="bg-layer bg-vignette"></div>
+
+  <!-- ============================================================
+       INTRO ANIMATION
+       ============================================================ -->
+  <div class="intro" id="intro">
+    <div class="intro-cross-wrap">
+      <canvas id="intro-fire-canvas" class="intro-fire-canvas"></canvas>
+      <div class="intro-cross">
+        <div class="cross-h"></div>
+        <div class="cross-v"></div>
+      </div>
+      <div class="intro-cross-glow"></div>
+    </div>
+    <div class="intro-logo" data-text="APERTUS">APERTUS</div>
+    <div class="intro-subtitle">SWISS SOVEREIGN LLM · INITIALIZING</div>
+    <div class="intro-progress">
+      <div class="intro-progress-bar"></div>
+    </div>
+  </div>
+
+  <!-- ============================================================
+       MAIN APP
+       ============================================================ -->
+  <div class="app" id="app">
+    <header>
+      <div class="logo-wrap">
+        <canvas id="header-fire-canvas" class="header-fire-canvas"></canvas>
+        <div class="swiss-cross-small">
+          <div class="cross-h-small"></div>
+          <div class="cross-v-small"></div>
+        </div>
+      </div>
+
+      <div class="title-block">
+        <h1 class="glitch-title" data-text="APERTUS">
+          APERTUS <span class="label">INVOICE ASSISTANT</span>
+        </h1>
+        <p>
+          <span class="status-dot"></span>
+          POWERED BY SWISS AI
+          <span class="sep">·</span>
+          <span class="author">by Anio Joseph</span>
+        </p>
+      </div>
+
+      <div class="hud">
+        <div class="hud-line"></div>
+        <div class="hud-text">🇨🇭 SWISS SOVEREIGN LLM</div>
+        <div class="hud-metrics">
+          <span class="metric"><span class="metric-label">MODEL</span> <span class="metric-value">8B</span></span>
+          <span class="metric"><span class="metric-label">CTX</span> <span class="metric-value">65K</span></span>
+          <span class="metric"><span class="metric-label">LAT</span> <span class="metric-value" id="latency">--</span></span>
+        </div>
+      </div>
+    </header>
+
+    <div class="chat" id="chat">
+      <div class="message agent">
+        <div class="avatar">AI</div>
+        <div class="bubble">
+          <div class="bubble-title">▶ SYSTEM READY</div>
+          I am your invoice reconciliation assistant, powered by <strong>Apertus</strong> — Switzerland's sovereign LLM.<br><br>
+          Try saying: <em>"Reconcile invoice INV-2026-0042"</em>
+        </div>
+      </div>
+    </div>
+
+    <div class="composer">
+      <div class="input-wrap">
+        <span class="input-prompt">&gt;</span>
+        <input type="text" id="input" placeholder="Type your request..." autocomplete="off" />
+      </div>
+      <button id="send">
+        SEND <span class="arrow">→</span>
+      </button>
+    </div>
+
+    <div class="corner corner-tl"></div>
+    <div class="corner corner-tr"></div>
+    <div class="corner corner-bl"></div>
+    <div class="corner corner-br"></div>
+  </div>
+
+  <script src="/static/js/chat.js"></script>
+</body>
+</html>

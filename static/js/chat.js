@@ -1,0 +1,498 @@
+﻿/* ==========================================================================
+   Apertus Invoice Assistant — Circuits + Neural (subtil) + Fire + Chat
+   Author: Anio Joseph
+   Project: Hack Apertus 2026
+   ========================================================================== */
+
+/* --------------------------------------------------------------------------
+   1. INTRO ANIMATION
+   -------------------------------------------------------------------------- */
+
+(function introAnimation() {
+  const intro = document.getElementById('intro');
+  const app = document.getElementById('app');
+  if (!intro || !app) return;
+
+  const canvas = document.getElementById('intro-fire-canvas');
+  if (canvas) startFire(canvas, 0.8, 60);
+
+  setTimeout(() => {
+    intro.classList.add('fade-out');
+    app.classList.add('visible');
+    setTimeout(() => intro.classList.add('hidden'), 900);
+  }, 4200);
+})();
+
+/* --------------------------------------------------------------------------
+   2. FIRE ENGINE
+   -------------------------------------------------------------------------- */
+
+function startFire(canvas, intensity, count) {
+  const ctx = canvas.getContext('2d');
+  const particles = [];
+
+  function resize() {
+    const rect = canvas.getBoundingClientRect();
+    canvas.width = rect.width;
+    canvas.height = rect.height;
+  }
+  resize();
+  window.addEventListener('resize', resize);
+
+  function spawn() {
+    const cx = canvas.width / 2;
+    const cy = canvas.height / 2;
+    const angle = Math.random() * Math.PI * 2;
+    const radius = Math.random() * (canvas.width / 2);
+    particles.push({
+      x: cx + Math.cos(angle) * radius,
+      y: cy + Math.sin(angle) * radius * 0.5 + canvas.height * 0.3,
+      vx: (Math.random() - 0.5) * 0.8,
+      vy: -1 - Math.random() * 2,
+      life: 1,
+      decay: 0.008 + Math.random() * 0.015,
+      size: 2 + Math.random() * 5,
+    });
+  }
+
+  function draw() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    for (let i = 0; i < intensity * 2; i++) spawn();
+
+    for (let i = particles.length - 1; i >= 0; i--) {
+      const p = particles[i];
+      p.x += p.vx;
+      p.y += p.vy;
+      p.vy -= 0.02;
+      p.life -= p.decay;
+
+      if (p.life <= 0) { particles.splice(i, 1); continue; }
+
+      const r = 255;
+      const g = Math.floor(100 * p.life + Math.random() * 80);
+      const b = Math.floor(50 * p.life);
+      const alpha = p.life * 0.7;
+
+      ctx.fillStyle = `rgba(${r}, ${g}, ${b}, ${alpha})`;
+      ctx.shadowColor = `rgba(255, ${g}, 0, 0.9)`;
+      ctx.shadowBlur = 20;
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.size * p.life, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    requestAnimationFrame(draw);
+  }
+
+  draw();
+}
+
+(function headerFire() {
+  const canvas = document.getElementById('header-fire-canvas');
+  if (canvas) startFire(canvas, 0.4, 30);
+})();
+
+/* --------------------------------------------------------------------------
+   3. CIRCUITS BOARD
+   -------------------------------------------------------------------------- */
+
+(function circuitsBoard() {
+  const canvas = document.getElementById('circuits-canvas');
+  if (!canvas) return;
+
+  const ctx = canvas.getContext('2d');
+  let w, h, cols, rows;
+  const grid = 50;
+  let traces = [];
+
+  function resize() {
+    w = canvas.width = window.innerWidth;
+    h = canvas.height = window.innerHeight;
+    cols = Math.ceil(w / grid);
+    rows = Math.ceil(h / grid);
+    buildTraces();
+  }
+  window.addEventListener('resize', resize);
+
+  function buildTraces() {
+    traces = [];
+    const count = Math.floor((cols * rows) / 4);
+    for (let i = 0; i < count; i++) {
+      const x = Math.floor(Math.random() * cols) * grid;
+      const y = Math.floor(Math.random() * rows) * grid;
+      const horizontal = Math.random() > 0.5;
+      const length = (2 + Math.floor(Math.random() * 5)) * grid;
+      traces.push({
+        x, y, length, horizontal,
+        progress: 0,
+        speed: 0.004 + Math.random() * 0.008,
+        delay: Math.random() * 150,
+      });
+    }
+  }
+
+  function drawNodes() {
+    ctx.fillStyle = 'rgba(227, 6, 19, 0.12)';
+    for (let c = 0; c < cols; c++) {
+      for (let r = 0; r < rows; r++) {
+        if (Math.random() > 0.8) {
+          ctx.beginPath();
+          ctx.arc(c * grid, r * grid, 1.2, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
+    }
+  }
+
+  function draw() {
+    ctx.clearRect(0, 0, w, h);
+    drawNodes();
+
+    traces.forEach((t) => {
+      if (t.delay > 0) { t.delay--; return; }
+      t.progress = Math.min(t.progress + t.speed, 1);
+
+      const len = t.length * t.progress;
+      const endX = t.horizontal ? t.x + len : t.x;
+      const endY = t.horizontal ? t.y : t.y + len;
+
+      ctx.strokeStyle = 'rgba(227, 6, 19, 0.18)';
+      ctx.lineWidth = 0.8;
+      ctx.beginPath();
+      ctx.moveTo(t.x, t.y);
+      ctx.lineTo(endX, endY);
+      ctx.stroke();
+
+      const px = t.horizontal ? t.x + t.length * t.progress : t.x;
+      const py = t.horizontal ? t.y : t.y + t.length * t.progress;
+
+      ctx.fillStyle = 'rgba(255, 150, 50, 0.6)';
+      ctx.shadowColor = 'rgba(255, 107, 0, 0.8)';
+      ctx.shadowBlur = 8;
+      ctx.beginPath();
+      ctx.arc(px, py, 1.8, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.fillStyle = 'rgba(227, 6, 19, 0.4)';
+      ctx.beginPath();
+      ctx.arc(endX, endY, 1.8, 0, Math.PI * 2);
+      ctx.fill();
+
+      if (t.progress >= 1) {
+        t.delay = 40 + Math.random() * 180;
+        t.progress = 0;
+      }
+    });
+
+    ctx.shadowBlur = 0;
+    requestAnimationFrame(draw);
+  }
+
+  resize();
+  draw();
+})();
+
+/* --------------------------------------------------------------------------
+   4. NEURAL NETWORK — VERSION SUBTILE
+   - 60 nœuds (au lieu de 120)
+   - Nœuds plus petits (2 à 3.5 px)
+   - Connexions discrètes (opacité 0.25)
+   - Glow réduit (shadowBlur 8)
+   - Pas de halo externe
+   -------------------------------------------------------------------------- */
+
+(function neuralNetwork() {
+  const canvas = document.getElementById('neural-canvas');
+  if (!canvas) return;
+
+  const ctx = canvas.getContext('2d');
+  const nodes = [];
+  const pulses = [];
+  const COUNT = 60;
+  const MAX_DIST = 180;
+  let w, h;
+
+  function resize() {
+    w = canvas.width = window.innerWidth;
+    h = canvas.height = window.innerHeight;
+  }
+  window.addEventListener('resize', resize);
+
+  function build() {
+    nodes.length = 0;
+    for (let i = 0; i < COUNT; i++) {
+      nodes.push({
+        x: Math.random() * w,
+        y: Math.random() * h,
+        vx: (Math.random() - 0.5) * 0.3,
+        vy: (Math.random() - 0.5) * 0.3,
+        radius: 2 + Math.random() * 1.5,        // ← plus petit
+        pulse: Math.random() * Math.PI * 2,
+      });
+    }
+  }
+
+  function draw() {
+    ctx.clearRect(0, 0, w, h);
+
+    // Update + draw nodes
+    nodes.forEach((n) => {
+      n.x += n.vx;
+      n.y += n.vy;
+      n.pulse += 0.03;
+
+      if (n.x < 0 || n.x > w) n.vx *= -1;
+      if (n.y < 0 || n.y > h) n.vy *= -1;
+
+      const glow = 0.4 + Math.sin(n.pulse) * 0.3;
+
+      // Core node — subtile, pas de halo externe
+      ctx.fillStyle = `rgba(255, 120, 120, ${0.4 + glow * 0.3})`;
+      ctx.shadowColor = 'rgba(227, 6, 19, 0.8)';
+      ctx.shadowBlur = 8;
+      ctx.beginPath();
+      ctx.arc(n.x, n.y, n.radius, 0, Math.PI * 2);
+      ctx.fill();
+    });
+
+    // Connections — discrètes
+    ctx.shadowBlur = 0;
+    for (let i = 0; i < nodes.length; i++) {
+      for (let j = i + 1; j < nodes.length; j++) {
+        const dx = nodes[i].x - nodes[j].x;
+        const dy = nodes[i].y - nodes[j].y;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+        if (dist < MAX_DIST) {
+          const alpha = (1 - dist / MAX_DIST) * 0.25;   // ← 0.25
+          ctx.strokeStyle = `rgba(227, 6, 19, ${alpha})`;
+          ctx.lineWidth = 0.6;                          // ← plus fin
+          ctx.beginPath();
+          ctx.moveTo(nodes[i].x, nodes[i].y);
+          ctx.lineTo(nodes[j].x, nodes[j].y);
+          ctx.stroke();
+
+          // Pulse discret (~3% des connexions)
+          if (Math.random() < 0.003) {
+            pulses.push({
+              from: nodes[i],
+              to: nodes[j],
+              progress: 0,
+              speed: 0.015 + Math.random() * 0.02,
+            });
+          }
+        }
+      }
+    }
+
+    // Pulses discrets
+    for (let i = pulses.length - 1; i >= 0; i--) {
+      const p = pulses[i];
+      p.progress += p.speed;
+
+      if (p.progress >= 1) {
+        pulses.splice(i, 1);
+        continue;
+      }
+
+      const px = p.from.x + (p.to.x - p.from.x) * p.progress;
+      const py = p.from.y + (p.to.y - p.from.y) * p.progress;
+
+      ctx.fillStyle = 'rgba(255, 180, 100, 0.7)';
+      ctx.shadowColor = 'rgba(255, 150, 50, 0.8)';
+      ctx.shadowBlur = 8;
+      ctx.beginPath();
+      ctx.arc(px, py, 2, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    ctx.shadowBlur = 0;
+    requestAnimationFrame(draw);
+  }
+
+  resize();
+  build();
+  draw();
+  window.addEventListener('resize', () => { resize(); build(); });
+})();
+
+/* --------------------------------------------------------------------------
+   5. BACKGROUND PARTICLES
+   -------------------------------------------------------------------------- */
+
+(function animatedBackground() {
+  const canvas = document.getElementById('fire-canvas');
+  if (!canvas) return;
+
+  const ctx = canvas.getContext('2d');
+  const particles = [];
+  let w, h;
+
+  function resize() {
+    w = canvas.width = window.innerWidth;
+    h = canvas.height = window.innerHeight;
+  }
+  window.addEventListener('resize', resize);
+
+  function spawn() {
+    particles.push({
+      x: Math.random() * w,
+      y: h + 20,
+      vx: (Math.random() - 0.5) * 0.5,
+      vy: -0.5 - Math.random() * 1,
+      life: 1,
+      decay: 0.004 + Math.random() * 0.006,
+      size: 1 + Math.random() * 2,
+    });
+  }
+
+  function draw() {
+    ctx.clearRect(0, 0, w, h);
+    for (let i = 0; i < 3; i++) spawn();
+
+    for (let i = particles.length - 1; i >= 0; i--) {
+      const p = particles[i];
+      p.x += p.vx;
+      p.y += p.vy;
+      p.life -= p.decay;
+
+      if (p.life <= 0) { particles.splice(i, 1); continue; }
+
+      const r = 255;
+      const g = Math.floor(100 * p.life);
+      const b = 30;
+      const alpha = p.life * 0.5;
+
+      ctx.fillStyle = `rgba(${r}, ${g}, ${b}, ${alpha})`;
+      ctx.shadowColor = `rgba(255, ${g}, 0, 0.8)`;
+      ctx.shadowBlur = 15;
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.size * p.life, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    requestAnimationFrame(draw);
+  }
+
+  resize();
+  draw();
+})();
+
+/* --------------------------------------------------------------------------
+   6. LATENCY MONITOR
+   -------------------------------------------------------------------------- */
+
+(function latencyMonitor() {
+  const el = document.getElementById('latency');
+  if (!el) return;
+  function update() {
+    const ms = Math.floor(200 + Math.random() * 800);
+    el.textContent = ms + 'ms';
+    el.style.color = ms < 500 ? '#4ade80' : (ms < 800 ? '#ffcc00' : '#ff6b00');
+  }
+  update();
+  setInterval(update, 2500);
+})();
+
+/* --------------------------------------------------------------------------
+   7. CHAT LOGIC
+   -------------------------------------------------------------------------- */
+
+const chat = document.getElementById('chat');
+const input = document.getElementById('input');
+const sendBtn = document.getElementById('send');
+
+function addMessage(text, role) {
+  const msg = document.createElement('div');
+  msg.className = 'message ' + role;
+  const avatarLabel = role === 'user' ? 'ME' : 'AI';
+  msg.innerHTML = `
+    <div class="avatar">${avatarLabel}</div>
+    <div class="bubble">${escapeHtml(text)}</div>
+  `;
+  chat.appendChild(msg);
+  chat.scrollTop = chat.scrollHeight;
+}
+
+function escapeHtml(text) {
+  const div = document.createElement('div');
+  div.textContent = text;
+  return div.innerHTML;
+}
+
+function showTyping() {
+  const t = document.createElement('div');
+  t.className = 'message agent';
+  t.id = 'typing';
+  t.innerHTML = `
+    <div class="avatar">AI</div>
+    <div class="bubble"><div class="bubble-title">▶ PROCESSING</div>Analyzing your request... (up to 60 seconds)</div>
+  `;
+  chat.appendChild(t);
+  chat.scrollTop = chat.scrollHeight;
+}
+
+function hideTyping() {
+  const t = document.getElementById('typing');
+  if (t) t.remove();
+}
+
+async function sendMessage() {
+  const message = input.value.trim();
+  if (!message) return;
+
+  addMessage(message, 'user');
+  input.value = '';
+  input.disabled = true;
+  sendBtn.disabled = true;
+  showTyping();
+
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 120000);
+
+  try {
+    const res = await fetch('/chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ message }),
+      signal: controller.signal,
+    });
+    clearTimeout(timeoutId);
+    const data = await res.json();
+    hideTyping();
+
+    if (!res.ok) {
+      addMessage('Error HTTP ' + res.status + ' : ' + (data.detail || JSON.stringify(data)), 'agent');
+      return;
+    }
+    if (data.error) {
+      addMessage('Error: ' + data.error, 'agent');
+    } else if (!data.reply || !data.reply.trim()) {
+      addMessage('Error: empty reply from the agent.', 'agent');
+    } else {
+      addMessage(data.reply, 'agent');
+    }
+  } catch (err) {
+    clearTimeout(timeoutId);
+    hideTyping();
+    if (err.name === 'AbortError') {
+      addMessage('Error: timeout after 120s.', 'agent');
+    } else {
+      addMessage('Network error: ' + err.message, 'agent');
+    }
+  } finally {
+    input.disabled = false;
+    sendBtn.disabled = false;
+    input.focus();
+  }
+}
+
+if (sendBtn) sendBtn.addEventListener('click', sendMessage);
+if (input) {
+  input.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      sendMessage();
+    }
+  });
+  input.focus();
+}
