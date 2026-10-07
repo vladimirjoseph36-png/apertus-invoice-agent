@@ -682,3 +682,142 @@ header::after {
   #send { padding: 12px 16px; font-size: 11px; }
 }
 
+
+/* ======================================================================
+   THEME TOGGLE BUTTON
+   ====================================================================== */
+
+.theme-toggle {
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--border-fire);
+  color: var(--text);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  transition: all 0.3s ease;
+  margin-right: 12px;
+  flex-shrink: 0;
+}
+
+.theme-toggle:hover {
+  background: rgba(227, 6, 19, 0.15);
+  border-color: var(--swiss-red);
+  transform: rotate(15deg) scale(1.05);
+  box-shadow: 0 0 15px rgba(227, 6, 19, 0.4);
+}
+
+.theme-icon {
+  display: block;
+  transition: transform 0.5s ease;
+}
+
+/* ======================================================================
+   LIGHT MODE
+   ====================================================================== */
+
+body.light-mode {
+  --bg-0: #f5f7fa;
+  --bg-1: #ffffff;
+  --bg-2: #eef1f5;
+  --text: #1a1a2e;
+  --text-dim: #6b7280;
+  --border: rgba(0, 0, 0, 0.08);
+  --border-fire: rgba(227, 6, 19, 0.25);
+  background: var(--bg-0);
+}
+
+body.light-mode .app {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.95), rgba(245, 247, 250, 0.98));
+  box-shadow:
+    0 0 0 1px rgba(227, 6, 19, 0.1),
+    0 0 100px rgba(227, 6, 19, 0.08),
+    0 40px 120px -20px rgba(0, 0, 0, 0.15);
+}
+
+body.light-mode header {
+  background: rgba(255, 255, 255, 0.6);
+}
+
+body.light-mode .composer {
+  background: rgba(255, 255, 255, 0.7);
+}
+
+body.light-mode .theme-toggle {
+  background: rgba(0, 0, 0, 0.04);
+  color: #1a1a2e;
+}
+
+body.light-mode .message.agent .bubble {
+  background: rgba(0, 0, 0, 0.03);
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  border-left: 2px solid var(--swiss-red);
+  color: var(--text);
+}
+
+body.light-mode .message.user .bubble {
+  background: linear-gradient(135deg, rgba(227, 6, 19, 0.12), rgba(255, 107, 0, 0.08));
+  border: 1px solid rgba(227, 6, 19, 0.25);
+  color: var(--text);
+}
+
+body.light-mode .input-wrap {
+  background: rgba(0, 0, 0, 0.03);
+  border: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+body.light-mode .input-wrap input {
+  color: var(--text);
+}
+
+body.light-mode .input-wrap input::placeholder {
+  color: var(--text-dim);
+}
+
+body.light-mode .glitch-title {
+  color: var(--text);
+}
+
+body.light-mode .title-block h1 {
+  color: var(--text);
+}
+
+body.light-mode .title-block p {
+  color: var(--text-dim);
+}
+
+body.light-mode .bg-grid {
+  background-image:
+    linear-gradient(rgba(227, 6, 19, 0.06) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(227, 6, 19, 0.06) 1px, transparent 1px);
+}
+
+body.light-mode .bg-glow {
+  background:
+    radial-gradient(circle at 15% 15%, rgba(227, 6, 19, 0.08), transparent 45%),
+    radial-gradient(circle at 85% 85%, rgba(255, 107, 0, 0.05), transparent 45%);
+}
+
+body.light-mode .bg-vignette {
+  background: radial-gradient(
+    ellipse at center,
+    transparent 50%,
+    rgba(0, 0, 0, 0.05) 90%
+  );
+}
+
+body.light-mode .corner {
+  border-color: rgba(227, 6, 19, 0.4);
+}
+
+body.light-mode .hud {
+  color: var(--swiss-red);
+}
+
+body.light-mode .hud-line {
+  background: var(--swiss-red);
+}

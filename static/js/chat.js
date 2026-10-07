@@ -496,3 +496,35 @@ if (input) {
   });
   input.focus();
 }
+
+/* --------------------------------------------------------------------------
+   0. THEME TOGGLE (dark / light mode)
+   -------------------------------------------------------------------------- */
+
+(function themeToggle() {
+  const toggle = document.getElementById('theme-toggle');
+  const icon = toggle ? toggle.querySelector('.theme-icon') : null;
+
+  if (!toggle || !icon) return;
+
+  const savedTheme = localStorage.getItem('apertus-theme') || 'dark';
+
+  function applyTheme(theme) {
+    if (theme === 'light') {
+      document.body.classList.add('light-mode');
+      icon.textContent = '☀️';
+    } else {
+      document.body.classList.remove('light-mode');
+      icon.textContent = '🌙';
+    }
+    localStorage.setItem('apertus-theme', theme);
+  }
+
+  applyTheme(savedTheme);
+
+  toggle.addEventListener('click', () => {
+    const current = document.body.classList.contains('light-mode') ? 'light' : 'dark';
+    const next = current === 'light' ? 'dark' : 'light';
+    applyTheme(next);
+  });
+})();
