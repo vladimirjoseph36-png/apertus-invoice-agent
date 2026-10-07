@@ -1,5 +1,5 @@
-Ôªø/* ==========================================================================
-   Apertus Invoice Assistant ‚Äî Circuits + Neural (subtil) + Fire + Chat
+/* ==========================================================================
+   Apertus Invoice Assistant ó Circuits + Neural (subtil) + Fire + Chat
    Author: Anio Joseph
    Project: Hack Apertus 2026
    ========================================================================== */
@@ -193,11 +193,11 @@ function startFire(canvas, intensity, count) {
 })();
 
 /* --------------------------------------------------------------------------
-   4. NEURAL NETWORK ‚Äî VERSION SUBTILE
-   - 60 n≈ìuds (au lieu de 120)
-   - N≈ìuds plus petits (2 √† 3.5 px)
-   - Connexions discr√®tes (opacit√© 0.25)
-   - Glow r√©duit (shadowBlur 8)
+   4. NEURAL NETWORK ó VERSION SUBTILE
+   - 60 núuds (au lieu de 120)
+   - Núuds plus petits (2 ‡ 3.5 px)
+   - Connexions discrËtes (opacitÈ 0.25)
+   - Glow rÈduit (shadowBlur 8)
    - Pas de halo externe
    -------------------------------------------------------------------------- */
 
@@ -226,7 +226,7 @@ function startFire(canvas, intensity, count) {
         y: Math.random() * h,
         vx: (Math.random() - 0.5) * 0.3,
         vy: (Math.random() - 0.5) * 0.3,
-        radius: 2 + Math.random() * 1.5,        // ‚Üê plus petit
+        radius: 2 + Math.random() * 1.5,        // ? plus petit
         pulse: Math.random() * Math.PI * 2,
       });
     }
@@ -246,7 +246,7 @@ function startFire(canvas, intensity, count) {
 
       const glow = 0.4 + Math.sin(n.pulse) * 0.3;
 
-      // Core node ‚Äî subtile, pas de halo externe
+      // Core node ó subtile, pas de halo externe
       ctx.fillStyle = `rgba(255, 120, 120, ${0.4 + glow * 0.3})`;
       ctx.shadowColor = 'rgba(227, 6, 19, 0.8)';
       ctx.shadowBlur = 8;
@@ -255,7 +255,7 @@ function startFire(canvas, intensity, count) {
       ctx.fill();
     });
 
-    // Connections ‚Äî discr√®tes
+    // Connections ó discrËtes
     ctx.shadowBlur = 0;
     for (let i = 0; i < nodes.length; i++) {
       for (let j = i + 1; j < nodes.length; j++) {
@@ -263,9 +263,9 @@ function startFire(canvas, intensity, count) {
         const dy = nodes[i].y - nodes[j].y;
         const dist = Math.sqrt(dx * dx + dy * dy);
         if (dist < MAX_DIST) {
-          const alpha = (1 - dist / MAX_DIST) * 0.25;   // ‚Üê 0.25
+          const alpha = (1 - dist / MAX_DIST) * 0.25;   // ? 0.25
           ctx.strokeStyle = `rgba(227, 6, 19, ${alpha})`;
-          ctx.lineWidth = 0.6;                          // ‚Üê plus fin
+          ctx.lineWidth = 0.6;                          // ? plus fin
           ctx.beginPath();
           ctx.moveTo(nodes[i].x, nodes[i].y);
           ctx.lineTo(nodes[j].x, nodes[j].y);
@@ -425,7 +425,7 @@ function showTyping() {
   t.id = 'typing';
   t.innerHTML = `
     <div class="avatar">AI</div>
-    <div class="bubble"><div class="bubble-title">‚ñ∂ PROCESSING</div>Analyzing your request... (up to 60 seconds)</div>
+    <div class="bubble"><div class="bubble-title">? PROCESSING</div>Analyzing your request... (up to 60 seconds)</div>
   `;
   chat.appendChild(t);
   chat.scrollTop = chat.scrollHeight;
@@ -501,23 +501,18 @@ if (input) {
    0. THEME TOGGLE (dark / light mode)
    -------------------------------------------------------------------------- */
 
-(function themeToggle() {
-  const toggle = document.getElementById('theme-toggle');
-  const icon = toggle ? toggle.querySelector('.theme-icon') : null;
 
   if (!toggle || !icon) return;
 
-  const savedTheme = localStorage.getItem('apertus-theme') || 'dark';
 
   function applyTheme(theme) {
     if (theme === 'light') {
       document.body.classList.add('light-mode');
-      icon.textContent = '‚òÄÔ∏è';
+      icon.textContent = '??';
     } else {
       document.body.classList.remove('light-mode');
-      icon.textContent = 'üåô';
+      icon.textContent = '??';
     }
-    localStorage.setItem('apertus-theme', theme);
   }
 
   applyTheme(savedTheme);
@@ -530,13 +525,37 @@ if (input) {
 })();
 
 /* --------------------------------------------------------------------------
-   0. THEME TOGGLE ‚Äî 3 modes: Dark / Light / Blue Flame
+   0. THEME TOGGLE ó 3 modes: Dark / Light / Blue Flame
    -------------------------------------------------------------------------- */
 
+
+  if (!toggle || !icon) return;
+
+  const THEMES = ['dark', 'light', 'blue-flame'];
+  const ICONS = { 'dark': '??', 'light': '??', 'blue-flame': '??' };
+  const CLASSES = ['light-mode', 'blue-flame'];
+
+  if (currentIndex === -1) currentIndex = 0;
+
+  function applyTheme(theme) {
+    document.body.classList.remove(...CLASSES);
+    if (theme === 'light') document.body.classList.add('light-mode');
+    if (theme === 'blue-flame') document.body.classList.add('blue-flame');
+    icon.textContent = ICONS[theme];
+  }
+
+  applyTheme(THEMES[currentIndex]);
+
+  toggle.addEventListener('click', () => {
+    currentIndex = (currentIndex + 1) % THEMES.length;
+    applyTheme(THEMES[currentIndex]);
+  });
+})();
+
+/* THEME TOGGLE ‚Äî 3 modes: Dark / Light / Blue Flame */
 (function themeToggle() {
   const toggle = document.getElementById('theme-toggle');
   const icon = toggle ? toggle.querySelector('.theme-icon') : null;
-
   if (!toggle || !icon) return;
 
   const THEMES = ['dark', 'light', 'blue-flame'];
