@@ -1,14 +1,14 @@
 """
-Apertus API client — Hugging Face Inference.
+Apertus API client - Groq Inference.
 
-Provides a thin wrapper around the Hugging Face InferenceClient
-to call the Apertus model (Swiss sovereign LLM).
+Provides a thin wrapper around the Groq API (OpenAI-compatible)
+to call an open-source LLM (GPT-OSS 20B by default).
 
 Author:
     Anio Joseph
 
 Project:
-    Hack Apertus — October 2026
+    Hack Apertus - October 2026
 """
 
 from __future__ import annotations
@@ -16,34 +16,31 @@ from __future__ import annotations
 import os
 from typing import Any, Dict, List
 
-from huggingface_hub import InferenceClient
+from groq import Groq
 
 
 class ApertusClient:
     """
-    Simple client for the Apertus model via Hugging Face Inference.
+    Simple client for LLM inference via Groq (OpenAI-compatible API).
 
     Attributes:
-        model_id: Hugging Face model identifier.
-        token: Hugging Face access token.
+        model_id: Groq model identifier.
+        api_key: Groq API key.
     """
 
     def __init__(self) -> None:
         self.model_id = os.getenv(
             "APERTUS_MODEL",
-            "swiss-ai/Apertus-8B-Instruct-2509",
+            "openai/gpt-oss-20b",
         )
-        self.token = os.getenv("HF_TOKEN", "")
+        self.api_key = os.getenv("GROQ_API_KEY", "")
 
-        if not self.token:
+        if not self.api_key:
             raise ValueError(
-                "HF_TOKEN is not set. Add it to your .env file."
+                "GROQ_API_KEY is not set. Add it to your .env file."
             )
 
-        self.client = InferenceClient(
-            model=self.model_id,
-            token=self.token,
-        )
+        self.client = Groq(api_key=self.api_key)
 
     def chat(
         self,
@@ -53,18 +50,19 @@ class ApertusClient:
         top_p: float = 0.9,
     ) -> str:
         """
-        Send a chat completion request to Apertus.
+        Send a chat completion request to Groq.
 
         Args:
             messages: List of message dicts with 'role' and 'content'.
             max_tokens: Maximum tokens to generate.
-            temperature: Sampling temperature (0.8 recommended).
-            top_p: Nucleus sampling (0.9 recommended).
+            temperature: Sampling temperature.
+            top_p: Nucleus sampling.
 
         Returns:
             The generated text response.
         """
-        response = self.client.chat_completion(
+        response = self.client.chat.completions.create(
+            model=self.model_id,
             messages=messages,
             max_tokens=max_tokens,
             temperature=temperature,
