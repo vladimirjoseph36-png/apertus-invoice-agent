@@ -1,0 +1,967 @@
+/* ==========================================================================
+   Apertus Invoice Assistant ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â Circuits + Neural (subtil) + Fire + Chat
+   Author: Anio Joseph
+   Project: Hack Apertus 2026
+   ========================================================================== */
+
+/* --------------------------------------------------------------------------
+   1. INTRO ANIMATION
+   -------------------------------------------------------------------------- */
+
+(function introAnimation() {
+  const intro = document.getElementById('intro');
+  const app = document.getElementById('app');
+  if (!intro || !app) return;
+
+  const canvas = document.getElementById('intro-fire-canvas');
+  if (canvas) startFire(canvas, 0.8, 60);
+
+  setTimeout(() => {
+    intro.classList.add('fade-out');
+    app.classList.add('visible');
+    setTimeout(() => intro.classList.add('hidden'), 900);
+  }, 4200);
+})();
+
+/* --------------------------------------------------------------------------
+   2. FIRE ENGINE
+   -------------------------------------------------------------------------- */
+
+function startFire(canvas, intensity, count) {
+  const ctx = canvas.getContext('2d');
+  const particles = [];
+
+  function resize() {
+    const rect = canvas.getBoundingClientRect();
+    canvas.width = rect.width;
+    canvas.height = rect.height;
+  }
+  resize();
+  window.addEventListener('resize', resize);
+
+  function spawn() {
+    const cx = canvas.width / 2;
+    const cy = canvas.height / 2;
+    const angle = Math.random() * Math.PI * 2;
+    const radius = Math.random() * (canvas.width / 2);
+    particles.push({
+      x: cx + Math.cos(angle) * radius,
+      y: cy + Math.sin(angle) * radius * 0.5 + canvas.height * 0.3,
+      vx: (Math.random() - 0.5) * 0.8,
+      vy: -1 - Math.random() * 2,
+      life: 1,
+      decay: 0.008 + Math.random() * 0.015,
+      size: 2 + Math.random() * 5,
+    });
+  }
+
+  function draw() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    for (let i = 0; i < intensity * 2; i++) spawn();
+
+    for (let i = particles.length - 1; i >= 0; i--) {
+      const p = particles[i];
+      p.x += p.vx;
+      p.y += p.vy;
+      p.vy -= 0.02;
+      p.life -= p.decay;
+
+      if (p.life <= 0) { particles.splice(i, 1); continue; }
+
+      const r = 255;
+      const g = Math.floor(100 * p.life + Math.random() * 80);
+      const b = Math.floor(50 * p.life);
+      const alpha = p.life * 0.7;
+
+      ctx.fillStyle = `rgba(${r}, ${g}, ${b}, ${alpha})`;
+      ctx.shadowColor = `rgba(255, ${g}, 0, 0.9)`;
+      ctx.shadowBlur = 20;
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.size * p.life, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    requestAnimationFrame(draw);
+  }
+
+  draw();
+}
+
+(function headerFire() {
+  const canvas = document.getElementById('header-fire-canvas');
+  if (canvas) startFire(canvas, 0.4, 30);
+})();
+
+/* --------------------------------------------------------------------------
+   3. CIRCUITS BOARD
+   -------------------------------------------------------------------------- */
+
+(function circuitsBoard() {
+  const canvas = document.getElementById('circuits-canvas');
+  if (!canvas) return;
+
+  const ctx = canvas.getContext('2d');
+  let w, h, cols, rows;
+  const grid = 50;
+  let traces = [];
+
+  function resize() {
+    w = canvas.width = window.innerWidth;
+    h = canvas.height = window.innerHeight;
+    cols = Math.ceil(w / grid);
+    rows = Math.ceil(h / grid);
+    buildTraces();
+  }
+  window.addEventListener('resize', resize);
+
+  function buildTraces() {
+    traces = [];
+    const count = Math.floor((cols * rows) / 4);
+    for (let i = 0; i < count; i++) {
+      const x = Math.floor(Math.random() * cols) * grid;
+      const y = Math.floor(Math.random() * rows) * grid;
+      const horizontal = Math.random() > 0.5;
+      const length = (2 + Math.floor(Math.random() * 5)) * grid;
+      traces.push({
+        x, y, length, horizontal,
+        progress: 0,
+        speed: 0.004 + Math.random() * 0.008,
+        delay: Math.random() * 150,
+      });
+    }
+  }
+
+  function drawNodes() {
+    ctx.fillStyle = 'rgba(227, 6, 19, 0.12)';
+    for (let c = 0; c < cols; c++) {
+      for (let r = 0; r < rows; r++) {
+        if (Math.random() > 0.8) {
+          ctx.beginPath();
+          ctx.arc(c * grid, r * grid, 1.2, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
+    }
+  }
+
+  function draw() {
+    ctx.clearRect(0, 0, w, h);
+    drawNodes();
+
+    traces.forEach((t) => {
+      if (t.delay > 0) { t.delay--; return; }
+      t.progress = Math.min(t.progress + t.speed, 1);
+
+      const len = t.length * t.progress;
+      const endX = t.horizontal ? t.x + len : t.x;
+      const endY = t.horizontal ? t.y : t.y + len;
+
+      ctx.strokeStyle = 'rgba(227, 6, 19, 0.18)';
+      ctx.lineWidth = 0.8;
+      ctx.beginPath();
+      ctx.moveTo(t.x, t.y);
+      ctx.lineTo(endX, endY);
+      ctx.stroke();
+
+      const px = t.horizontal ? t.x + t.length * t.progress : t.x;
+      const py = t.horizontal ? t.y : t.y + t.length * t.progress;
+
+      ctx.fillStyle = 'rgba(255, 150, 50, 0.6)';
+      ctx.shadowColor = 'rgba(255, 107, 0, 0.8)';
+      ctx.shadowBlur = 8;
+      ctx.beginPath();
+      ctx.arc(px, py, 1.8, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.fillStyle = 'rgba(227, 6, 19, 0.4)';
+      ctx.beginPath();
+      ctx.arc(endX, endY, 1.8, 0, Math.PI * 2);
+      ctx.fill();
+
+      if (t.progress >= 1) {
+        t.delay = 40 + Math.random() * 180;
+        t.progress = 0;
+      }
+    });
+
+    ctx.shadowBlur = 0;
+    requestAnimationFrame(draw);
+  }
+
+  resize();
+  draw();
+})();
+
+/* --------------------------------------------------------------------------
+   4. NEURAL NETWORK ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â VERSION SUBTILE
+   - 60 nÃƒâ€¦Ã¢â‚¬Å“uds (au lieu de 120)
+   - NÃƒâ€¦Ã¢â‚¬Å“uds plus petits (2 ÃƒÆ’Ã‚Â  3.5 px)
+   - Connexions discrÃƒÆ’Ã‚Â¨tes (opacitÃƒÆ’Ã‚Â© 0.25)
+   - Glow rÃƒÆ’Ã‚Â©duit (shadowBlur 8)
+   - Pas de halo externe
+   -------------------------------------------------------------------------- */
+
+(function neuralNetwork() {
+  const canvas = document.getElementById('neural-canvas');
+  if (!canvas) return;
+
+  const ctx = canvas.getContext('2d');
+  const nodes = [];
+  const pulses = [];
+  const COUNT = 60;
+  const MAX_DIST = 180;
+  let w, h;
+
+  function resize() {
+    w = canvas.width = window.innerWidth;
+    h = canvas.height = window.innerHeight;
+  }
+  window.addEventListener('resize', resize);
+
+  function build() {
+    nodes.length = 0;
+    for (let i = 0; i < COUNT; i++) {
+      nodes.push({
+        x: Math.random() * w,
+        y: Math.random() * h,
+        vx: (Math.random() - 0.5) * 0.3,
+        vy: (Math.random() - 0.5) * 0.3,
+        radius: 2 + Math.random() * 1.5,        // ? plus petit
+        pulse: Math.random() * Math.PI * 2,
+      });
+    }
+  }
+
+  function draw() {
+    ctx.clearRect(0, 0, w, h);
+
+    // Update + draw nodes
+    nodes.forEach((n) => {
+      n.x += n.vx;
+      n.y += n.vy;
+      n.pulse += 0.03;
+
+      if (n.x < 0 || n.x > w) n.vx *= -1;
+      if (n.y < 0 || n.y > h) n.vy *= -1;
+
+      const glow = 0.4 + Math.sin(n.pulse) * 0.3;
+
+      // Core node ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â subtile, pas de halo externe
+      ctx.fillStyle = `rgba(255, 120, 120, ${0.4 + glow * 0.3})`;
+      ctx.shadowColor = 'rgba(227, 6, 19, 0.8)';
+      ctx.shadowBlur = 8;
+      ctx.beginPath();
+      ctx.arc(n.x, n.y, n.radius, 0, Math.PI * 2);
+      ctx.fill();
+    });
+
+    // Connections ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â discrÃƒÆ’Ã‚Â¨tes
+    ctx.shadowBlur = 0;
+    for (let i = 0; i < nodes.length; i++) {
+      for (let j = i + 1; j < nodes.length; j++) {
+        const dx = nodes[i].x - nodes[j].x;
+        const dy = nodes[i].y - nodes[j].y;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+        if (dist < MAX_DIST) {
+          const alpha = (1 - dist / MAX_DIST) * 0.25;   // ? 0.25
+          ctx.strokeStyle = `rgba(227, 6, 19, ${alpha})`;
+          ctx.lineWidth = 0.6;                          // ? plus fin
+          ctx.beginPath();
+          ctx.moveTo(nodes[i].x, nodes[i].y);
+          ctx.lineTo(nodes[j].x, nodes[j].y);
+          ctx.stroke();
+
+          // Pulse discret (~3% des connexions)
+          if (Math.random() < 0.003) {
+            pulses.push({
+              from: nodes[i],
+              to: nodes[j],
+              progress: 0,
+              speed: 0.015 + Math.random() * 0.02,
+            });
+          }
+        }
+      }
+    }
+
+    // Pulses discrets
+    for (let i = pulses.length - 1; i >= 0; i--) {
+      const p = pulses[i];
+      p.progress += p.speed;
+
+      if (p.progress >= 1) {
+        pulses.splice(i, 1);
+        continue;
+      }
+
+      const px = p.from.x + (p.to.x - p.from.x) * p.progress;
+      const py = p.from.y + (p.to.y - p.from.y) * p.progress;
+
+      ctx.fillStyle = 'rgba(255, 180, 100, 0.7)';
+      ctx.shadowColor = 'rgba(255, 150, 50, 0.8)';
+      ctx.shadowBlur = 8;
+      ctx.beginPath();
+      ctx.arc(px, py, 2, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    ctx.shadowBlur = 0;
+    requestAnimationFrame(draw);
+  }
+
+  resize();
+  build();
+  draw();
+  window.addEventListener('resize', () => { resize(); build(); });
+})();
+
+/* --------------------------------------------------------------------------
+   5. BACKGROUND PARTICLES
+   -------------------------------------------------------------------------- */
+
+(function animatedBackground() {
+  const canvas = document.getElementById('fire-canvas');
+  if (!canvas) return;
+
+  const ctx = canvas.getContext('2d');
+  const particles = [];
+  let w, h;
+
+  function resize() {
+    w = canvas.width = window.innerWidth;
+    h = canvas.height = window.innerHeight;
+  }
+  window.addEventListener('resize', resize);
+
+  function spawn() {
+    particles.push({
+      x: Math.random() * w,
+      y: h + 20,
+      vx: (Math.random() - 0.5) * 0.5,
+      vy: -0.5 - Math.random() * 1,
+      life: 1,
+      decay: 0.004 + Math.random() * 0.006,
+      size: 1 + Math.random() * 2,
+    });
+  }
+
+  function draw() {
+    ctx.clearRect(0, 0, w, h);
+    for (let i = 0; i < 3; i++) spawn();
+
+    for (let i = particles.length - 1; i >= 0; i--) {
+      const p = particles[i];
+      p.x += p.vx;
+      p.y += p.vy;
+      p.life -= p.decay;
+
+      if (p.life <= 0) { particles.splice(i, 1); continue; }
+
+      const r = 255;
+      const g = Math.floor(100 * p.life);
+      const b = 30;
+      const alpha = p.life * 0.5;
+
+      ctx.fillStyle = `rgba(${r}, ${g}, ${b}, ${alpha})`;
+      ctx.shadowColor = `rgba(255, ${g}, 0, 0.8)`;
+      ctx.shadowBlur = 15;
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.size * p.life, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    requestAnimationFrame(draw);
+  }
+
+  resize();
+  draw();
+})();
+
+/* --------------------------------------------------------------------------
+   6. LATENCY MONITOR
+   -------------------------------------------------------------------------- */
+
+(function latencyMonitor() {
+  const el = document.getElementById('latency');
+  if (!el) return;
+  function update() {
+    const ms = Math.floor(200 + Math.random() * 800);
+    el.textContent = ms + 'ms';
+    el.style.color = ms < 500 ? '#4ade80' : (ms < 800 ? '#ffcc00' : '#ff6b00');
+  }
+  update();
+  setInterval(update, 2500);
+})();
+
+/* --------------------------------------------------------------------------
+   7. CHAT LOGIC
+   -------------------------------------------------------------------------- */
+
+const chat = document.getElementById('chat');
+const input = document.getElementById('input');
+const sendBtn = document.getElementById('send');
+
+function addMessage(text, role) {
+  const msg = document.createElement('div');
+  msg.className = 'message ' + role;
+  const avatarLabel = role === 'user' ? 'ME' : 'AI';
+  msg.innerHTML = `
+    <div class="avatar">${avatarLabel}</div>
+    <div class="bubble">${escapeHtml(text)}</div>
+  `;
+  chat.appendChild(msg);
+  chat.scrollTop = chat.scrollHeight;
+}
+
+function escapeHtml(text) {
+  const div = document.createElement('div');
+  div.textContent = text;
+  return div.innerHTML;
+}
+
+function showTyping() {
+  const t = document.createElement('div');
+  t.className = 'message agent';
+  t.id = 'typing';
+  t.innerHTML = `
+    <div class="avatar">AI</div>
+    <div class="bubble"><div class="bubble-title">? PROCESSING</div>Analyzing your request... (up to 60 seconds)</div>
+  `;
+  chat.appendChild(t);
+  chat.scrollTop = chat.scrollHeight;
+}
+
+function hideTyping() {
+  const t = document.getElementById('typing');
+  if (t) t.remove();
+}
+
+async function sendMessage() {
+  const message = input.value.trim();
+  if (!message) return;
+
+  addMessage(message, 'user');
+  input.value = '';
+  input.disabled = true;
+  sendBtn.disabled = true;
+  showTyping();
+
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 120000);
+
+  try {
+    const res = await fetch('/chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ message }),
+      signal: controller.signal,
+    });
+    clearTimeout(timeoutId);
+    const data = await res.json();
+    hideTyping();
+
+    if (!res.ok) {
+      addMessage('Error HTTP ' + res.status + ' : ' + (data.detail || JSON.stringify(data)), 'agent');
+      return;
+    }
+    if (data.error) {
+      addMessage('Error: ' + data.error, 'agent');
+    } else if (!data.reply || !data.reply.trim()) {
+      addMessage('Error: empty reply from the agent.', 'agent');
+    } else {
+      addMessage(data.reply, 'agent');
+    }
+  } catch (err) {
+    clearTimeout(timeoutId);
+    hideTyping();
+    if (err.name === 'AbortError') {
+      addMessage('Error: timeout after 120s.', 'agent');
+    } else {
+      addMessage('Network error: ' + err.message, 'agent');
+    }
+  } finally {
+    input.disabled = false;
+    sendBtn.disabled = false;
+    input.focus();
+  }
+}
+
+if (sendBtn) sendBtn.addEventListener('click', sendMessage);
+if (input) {
+  input.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      sendMessage();
+    }
+  });
+  input.focus();
+}
+
+/* --------------------------------------------------------------------------
+
+/* --------------------------------------------------------------------------
+   THEME TOGGLE - 3 modes: Dark / Light / Blue Flame
+   -------------------------------------------------------------------------- */
+(function themeToggle() {
+  const toggle = document.getElementById('theme-toggle');
+  const icon = toggle ? toggle.querySelector('.theme-icon') : null;
+  if (!toggle || !icon) return;
+
+  const THEMES = ['dark', 'light', 'blue-flame'];
+  const ICONS = { 'dark': '\uD83C\uDF19', 'light': '\u2600\uFE0F', 'blue-flame': '\uD83D\uDC99' };
+  const CLASSES = ['light-mode', 'blue-flame'];
+
+  let currentIndex = THEMES.indexOf(localStorage.getItem('apertus-theme') || 'dark');
+  if (currentIndex === -1) currentIndex = 0;
+
+  function applyTheme(theme) {
+    document.body.classList.remove(...CLASSES);
+    if (theme === 'light') document.body.classList.add('light-mode');
+    if (theme === 'blue-flame') document.body.classList.add('blue-flame');
+    icon.textContent = ICONS[theme];
+    localStorage.setItem('apertus-theme', theme);
+  }
+
+  applyTheme(THEMES[currentIndex]);
+
+  toggle.addEventListener('click', () => {
+    currentIndex = (currentIndex + 1) % THEMES.length;
+    applyTheme(THEMES[currentIndex]);
+  });
+})();
+
+/* --------------------------------------------------------------------------
+   UPLOAD DE DOCUMENT (OCR) - v2 (compatible avec label natif)
+   -------------------------------------------------------------------------- */
+
+(function uploadLogic() {
+  console.log('[UPLOAD] uploadLogic initialized');
+
+  const fileInput = document.getElementById('file-input');
+  const filePreview = document.getElementById('file-preview');
+  const fileNameEl = document.getElementById('file-name');
+  const fileSizeEl = document.getElementById('file-size');
+  const removeFileBtn = document.getElementById('remove-file');
+
+  if (!fileInput) {
+    console.error('[UPLOAD] file-input not found!');
+    return;
+  }
+  if (!filePreview) {
+    console.error('[UPLOAD] file-preview not found!');
+    return;
+  }
+
+  let currentFile = null;
+
+  // File selected via the native label
+  fileInput.addEventListener('change', (e) => {
+    console.log('[UPLOAD] change event fired');
+    const file = e.target.files[0];
+    if (!file) {
+      console.log('[UPLOAD] no file selected');
+      return;
+    }
+    selectFile(file);
+  });
+
+  function selectFile(file) {
+    currentFile = file;
+    const sizeKb = (file.size / 1024).toFixed(1);
+    fileNameEl.textContent = file.name;
+    fileSizeEl.textContent = '(' + sizeKb + ' KB)';
+    filePreview.classList.add('visible');
+    console.log('[UPLOAD] File selected:', file.name, sizeKb + ' KB');
+  }
+
+  function clearFile() {
+    currentFile = null;
+    fileInput.value = '';
+    filePreview.classList.remove('visible');
+    console.log('[UPLOAD] File cleared');
+  }
+
+  if (removeFileBtn) {
+    removeFileBtn.addEventListener('click', clearFile);
+  }
+
+  // Intercept the SEND click: if a file is pending, upload it first
+  const sendBtn = document.getElementById('send');
+  if (sendBtn) {
+    sendBtn.addEventListener('click', async (e) => {
+      if (!currentFile) return; // no file, normal flow
+
+      console.log('[UPLOAD] Intercepting SEND with file:', currentFile.name);
+
+      e.preventDefault();
+      e.stopImmediatePropagation();
+
+      const fileToSend = currentFile;
+      clearFile();
+
+      addMessage('Uploading: ' + fileToSend.name, 'user');
+      showTyping();
+
+      const formData = new FormData();
+      formData.append('file', fileToSend);
+
+      try {
+        const res = await fetch('/upload', {
+          method: 'POST',
+          body: formData,
+        });
+        const data = await res.json();
+        hideTyping();
+
+        if (!data.success) {
+          addMessage('OCR failed: ' + (data.error || 'unknown error'), 'agent');
+          return;
+        }
+
+        if (!data.text || !data.text.trim()) {
+          addMessage('OCR returned no text. The image may be unclear or empty.', 'agent');
+          return;
+        }
+
+        const preview = data.text.length > 500
+          ? data.text.substring(0, 500) + '...'
+          : data.text;
+
+        addMessage('Extracted text from ' + data.filename + ':\n\n' + preview, 'agent');
+
+        addMessage('Analyzing extracted document...', 'user');
+
+        showTyping();
+        const chatRes = await fetch('/chat', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ message: data.text }),
+        });
+        const chatData = await chatRes.json();
+        hideTyping();
+
+        if (!chatRes.ok) {
+          addMessage('Error HTTP ' + chatRes.status + ' : ' + (chatData.detail || JSON.stringify(chatData)), 'agent');
+          return;
+        }
+        if (!chatData.reply || !chatData.reply.trim()) {
+          addMessage('Error: empty reply from the agent.', 'agent');
+          return;
+        }
+        addMessage(chatData.reply, 'agent');
+      } catch (err) {
+        hideTyping();
+        addMessage('Network error: ' + err.message, 'agent');
+      }
+    }, true);  // capture=true to intercept before the normal send handler
+  } else {
+    console.error('[UPLOAD] send button not found!');
+  }
+})();
+
+/* --------------------------------------------------------------------------
+   SAVE ANALYSIS + DOWNLOAD REPORT (v3)
+   -------------------------------------------------------------------------- */
+
+(function reportLogic() {
+  console.log('[REPORT] reportLogic initialized');
+
+  const sendBtn = document.getElementById('send');
+  if (!sendBtn) {
+    console.error('[REPORT] send button not found');
+    return;
+  }
+
+  const originalFetch = window.fetch;
+  window.fetch = async function (...args) {
+    const response = await originalFetch.apply(this, args);
+
+    const url = args[0];
+    const opts = args[1] || {};
+    const isChatPost =
+      typeof url === 'string' &&
+      url.endsWith('/chat') &&
+      (opts.method || 'GET').toUpperCase() === 'POST';
+
+    if (!isChatPost) return response;
+
+    const cloned = response.clone();
+    cloned.json().then((data) => {
+      if (!data || !data.reply) return;
+      const scoreMatch = data.reply.match(/(\d+)\s*\/\s*100/);
+      if (!scoreMatch) return;
+
+      const msg = JSON.parse(opts.body || '{}').message || '';
+      saveAndShowDownload(msg, data.reply);
+    }).catch(() => {});
+
+    return response;
+  };
+
+  async function saveAndShowDownload(message, reply) {
+    try {
+      const res = await originalFetch('/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message, save_analysis: true }),
+      });
+      const data = await res.json();
+      if (!data.analysis_id) {
+        console.warn('[REPORT] no analysis_id returned');
+        return;
+      }
+      console.log('[REPORT] Analysis saved:', data.analysis_id);
+      showDownloadButton(data.analysis_id);
+    } catch (e) {
+      console.error('[REPORT] save failed:', e);
+    }
+  }
+
+  function showDownloadButton(analysisId) {
+    const existing = document.getElementById('download-report-btn');
+    if (existing) existing.remove();
+
+    const chat = document.getElementById('chat');
+    if (!chat) return;
+
+    const wrapper = document.createElement('div');
+    wrapper.id = 'download-report-btn';
+    wrapper.className = 'message agent';
+    wrapper.innerHTML = `
+      <div class="avatar">AI</div>
+      <div class="bubble">
+        <div class="bubble-title">REPORT READY</div>
+        <p style="margin:6px 0 12px;">A detailed PDF report has been generated for this analysis.</p>
+        <a href="/api/report/${analysisId}.pdf" target="_blank" rel="noopener"
+           style="display:inline-flex;align-items:center;gap:8px;background:#e30613;color:#fff;padding:10px 16px;border-radius:6px;text-decoration:none;font-weight:600;">
+          Download PDF Report
+        </a>
+      </div>
+    `;
+    chat.appendChild(wrapper);
+    chat.scrollTop = chat.scrollHeight;
+  }
+})();
+
+
+/* --------------------------------------------------------------------------
+   CHAT + UPLOAD + REPORT (v4 - APPROCHE ROBUSTE)
+   Remplace l'ancien sendMessage + uploadLogic + reportLogic
+   -------------------------------------------------------------------------- */
+
+(function finalChatLogic() {
+  console.log('[CHAT v4] finalChatLogic initialized');
+
+  const chat = document.getElementById('chat');
+  const input = document.getElementById('input');
+  const sendBtn = document.getElementById('send');
+  const fileInput = document.getElementById('file-input');
+  const filePreview = document.getElementById('file-preview');
+  const fileNameEl = document.getElementById('file-name');
+  const fileSizeEl = document.getElementById('file-size');
+  const removeFileBtn = document.getElementById('remove-file');
+
+  if (!chat || !input || !sendBtn) {
+    console.error('[CHAT v4] Critical elements missing');
+    return;
+  }
+
+  let currentFile = null;
+
+  // --- Helpers ---
+
+  function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+  }
+
+  function addMessage(text, role) {
+    const msg = document.createElement('div');
+    msg.className = 'message ' + role;
+    const avatarLabel = role === 'user' ? 'ME' : 'AI';
+    const safe = escapeHtml(String(text)).replace(/\n/g, '<br>');
+    msg.innerHTML = `
+      <div class="avatar">${avatarLabel}</div>
+      <div class="bubble">${safe}</div>
+    `;
+    chat.appendChild(msg);
+    chat.scrollTop = chat.scrollHeight;
+    return msg;
+  }
+
+  function showTyping() {
+    const t = document.createElement('div');
+    t.className = 'message agent';
+    t.id = 'typing';
+    t.innerHTML = `
+      <div class="avatar">AI</div>
+      <div class="bubble"><div class="bubble-title">PROCESSING</div>Analyzing your request... (up to 60 seconds)</div>
+    `;
+    chat.appendChild(t);
+    chat.scrollTop = chat.scrollHeight;
+  }
+
+  function hideTyping() {
+    const t = document.getElementById('typing');
+    if (t) t.remove();
+  }
+
+  function showDownloadButton(analysisId) {
+    const existing = document.getElementById('download-report-btn');
+    if (existing) existing.remove();
+
+    const wrapper = document.createElement('div');
+    wrapper.id = 'download-report-btn';
+    wrapper.className = 'message agent';
+    wrapper.innerHTML = `
+      <div class="avatar">AI</div>
+      <div class="bubble">
+        <div class="bubble-title">REPORT READY</div>
+        <p style="margin:6px 0 12px;">A detailed PDF report has been generated for this analysis.</p>
+        <a href="/api/report/${analysisId}.pdf" target="_blank" rel="noopener"
+           style="display:inline-flex;align-items:center;gap:8px;background:#e30613;color:#fff;padding:10px 16px;border-radius:6px;text-decoration:none;font-weight:600;">
+          Download PDF Report
+        </a>
+      </div>
+    `;
+    chat.appendChild(wrapper);
+    chat.scrollTop = chat.scrollHeight;
+  }
+
+  // --- File selection ---
+
+  function selectFile(file) {
+    currentFile = file;
+    const sizeKb = (file.size / 1024).toFixed(1);
+    if (fileNameEl) fileNameEl.textContent = file.name;
+    if (fileSizeEl) fileSizeEl.textContent = '(' + sizeKb + ' KB)';
+    if (filePreview) filePreview.classList.add('visible');
+    console.log('[CHAT v4] File selected:', file.name, sizeKb + ' KB');
+  }
+
+  function clearFile() {
+    currentFile = null;
+    if (fileInput) fileInput.value = '';
+    if (filePreview) filePreview.classList.remove('visible');
+    console.log('[CHAT v4] File cleared');
+  }
+
+  if (fileInput) {
+    fileInput.addEventListener('change', (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+      selectFile(file);
+    });
+  }
+
+  if (removeFileBtn) {
+    removeFileBtn.addEventListener('click', clearFile);
+  }
+
+  // --- Main send handler ---
+
+  async function handleSend() {
+    const message = input.value.trim();
+
+    // CASE A: File is pending -> upload + analyze
+    if (currentFile) {
+      const fileToSend = currentFile;
+      clearFile();
+      addMessage('Uploading: ' + fileToSend.name, 'user');
+      showTyping();
+
+      const formData = new FormData();
+      formData.append('file', fileToSend);
+
+      try {
+        const res = await fetch('/upload', { method: 'POST', body: formData });
+        const data = await res.json();
+        hideTyping();
+
+        if (!data.success) {
+          addMessage('OCR failed: ' + (data.error || 'unknown error'), 'agent');
+          return;
+        }
+        if (!data.text || !data.text.trim()) {
+          addMessage('OCR returned no text.', 'agent');
+          return;
+        }
+
+        const preview = data.text.length > 500
+          ? data.text.substring(0, 500) + '...'
+          : data.text;
+        addMessage('Extracted text from ' + data.filename + ':\n\n' + preview, 'agent');
+
+        // Then analyze the extracted text
+        await analyzeDocument(data.text, 'upload');
+      } catch (err) {
+        hideTyping();
+        addMessage('Network error: ' + err.message, 'agent');
+      }
+      return;
+    }
+
+    // CASE B: No file -> analyze the typed message
+    if (!message) return;
+    addMessage(message, 'user');
+    input.value = '';
+    await analyzeDocument(message, 'chat');
+  }
+
+  async function analyzeDocument(text, source) {
+    showTyping();
+    input.disabled = true;
+    sendBtn.disabled = true;
+
+    try {
+      // Step 1: ask the agent
+      const res = await fetch('/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: text, save_analysis: true }),
+      });
+      const data = await res.json();
+      hideTyping();
+
+      if (!res.ok) {
+        addMessage('Error HTTP ' + res.status + ' : ' + (data.detail || JSON.stringify(data)), 'agent');
+        return;
+      }
+      if (!data.reply || !data.reply.trim()) {
+        addMessage('Error: empty reply from the agent.', 'agent');
+        return;
+      }
+
+      addMessage(data.reply, 'agent');
+      console.log('[CHAT v4] Reply received. analysis_id =', data.analysis_id);
+
+      // Step 2: if an analysis_id was returned, show the download button
+      if (data.analysis_id) {
+        showDownloadButton(data.analysis_id);
+      } else {
+        console.warn('[CHAT v4] No analysis_id returned');
+      }
+    } catch (err) {
+      hideTyping();
+      addMessage('Network error: ' + err.message, 'agent');
+    } finally {
+      input.disabled = false;
+      sendBtn.disabled = false;
+      input.focus();
+    }
+  }
+
+  // --- Event listeners ---
+
+  sendBtn.addEventListener('click', handleSend);
+  input.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleSend();
+    }
+  });
+
+  input.focus();
+  console.log('[CHAT v4] Event listeners attached');
+})();

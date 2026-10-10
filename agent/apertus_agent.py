@@ -1,6 +1,8 @@
 """
 Apertus Invoice Agent - Robust agent using Groq (OpenAI-compatible API).
 
+Supports invoices AND purchase orders with universal LLM extraction.
+
 Author: Anio Joseph
 Project: Hack Apertus - October 2026
 """
@@ -24,15 +26,21 @@ from tools.compare_amounts import compare_amounts
 from tools.send_alert import send_alert
 from tools.mark_as_approved import mark_as_approved
 from tools.detect_fraud import detect_fraud
+from tools.classify_document import classify_document
+from tools.extract_purchase_order import extract_purchase_order
+from tools.extract_generic import extract_generic
 
 
 TOOLS: Dict[str, Callable] = {
+    "classify_document": classify_document,
+    "extract_generic": extract_generic,
     "extract_invoice": extract_invoice,
+    "extract_purchase_order": extract_purchase_order,
     "find_purchase_order": find_purchase_order,
     "compare_amounts": compare_amounts,
+    "detect_fraud": detect_fraud,
     "send_alert": send_alert,
     "mark_as_approved": mark_as_approved,
-    "detect_fraud": detect_fraud,
 }
 
 # Schemas JSON pour le tool calling natif Groq
@@ -40,8 +48,42 @@ TOOLS_SCHEMA = [
     {
         "type": "function",
         "function": {
+            "name": "extract_generic",
+            "description": "UNIVERSAL EXTRACTION: extract ALL fields from ANY financial document (invoice, PO, quote) using the LLM. Works with any format. Returns document_type and a fields dict. ALWAYS call this FIRST.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "document_text": {
+                        "type": "string",
+                        "description": "The full text of the document to extract data from.",
+                    }
+                },
+                "required": ["document_text"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "classify_document",
+            "description": "Classify a financial document as 'invoice', 'purchase_order', or 'unknown'.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "document_text": {
+                        "type": "string",
+                        "description": "The full text of the document to classify.",
+                    }
+                },
+                "required": ["document_text"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
             "name": "extract_invoice",
-            "description": "Extract structured data from an invoice text.",
+            "description": "Legacy extractor for invoices (regex-based). Prefer extract_generic.",
             "parameters": {
                 "type": "object",
                 "properties": {
@@ -57,8 +99,25 @@ TOOLS_SCHEMA = [
     {
         "type": "function",
         "function": {
+            "name": "extract_purchase_order",
+            "description": "Legacy extractor for POs (regex-based). Prefer extract_generic.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "po_text": {
+                        "type": "string",
+                        "description": "The full text of the purchase order.",
+                    }
+                },
+                "required": ["po_text"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
             "name": "find_purchase_order",
-            "description": "Find a purchase order by its reference.",
+            "description": "Find a purchase order by its reference in the database.",
             "parameters": {
                 "type": "object",
                 "properties": {
@@ -92,7 +151,7 @@ TOOLS_SCHEMA = [
         "type": "function",
         "function": {
             "name": "detect_fraud",
-            "description": "Analyze an invoice for fraud signals (heuristic rules + statistical analysis + ML). Returns a risk score 0-100, level, and detailed anomalies.",
+            "description": "Analyze an invoice for fraud signals. Returns a risk score 0-100, level, and detailed anomalies. po_reference and iban can be null if not available.",
             "parameters": {
                 "type": "object",
                 "properties": {
@@ -100,8 +159,8 @@ TOOLS_SCHEMA = [
                     "supplier_name": {"type": "string"},
                     "amount": {"type": "number"},
                     "vat": {"type": "number"},
-                    "po_reference": {"type": "string"},
-                    "iban": {"type": "string"},
+                    "po_reference": {"type": ["string", "null"]},
+                    "iban": {"type": ["string", "null"]},
                 },
                 "required": ["invoice_id", "supplier_name", "amount", "vat"],
             },
@@ -140,12 +199,15 @@ TOOLS_SCHEMA = [
 
 TOOLS_DESCRIPTION = """
 Available tools:
-1. extract_invoice(invoice_text: str) -> dict
-2. find_purchase_order(po_reference: str) -> dict
-3. compare_amounts(invoice_amount, invoice_vat, po_amount, po_vat) -> dict
-4. detect_fraud(invoice_id, supplier_name, amount, vat, po_reference, iban) -> dict
-5. send_alert(invoice_id: str, reason: str) -> dict
-6. mark_as_approved(invoice_id: str) -> dict
+1. extract_generic(document_text: str) -> dict
+2. classify_document(document_text: str) -> dict
+3. extract_invoice(invoice_text: str) -> dict
+4. extract_purchase_order(po_text: str) -> dict
+5. find_purchase_order(po_reference: str) -> dict
+6. compare_amounts(invoice_amount, invoice_vat, po_amount, po_vat) -> dict
+7. detect_fraud(invoice_id, supplier_name, amount, vat, po_reference, iban) -> dict
+8. send_alert(invoice_id: str, reason: str) -> dict
+9. mark_as_approved(invoice_id: str) -> dict
 """
 
 DEMO_INVOICES: Dict[str, str] = {
@@ -165,13 +227,40 @@ Items: 3x Server rack, 2x Premium license
 """,
 }
 
+DEMO_PURCHASE_ORDERS: Dict[str, str] = {
+    "PO-2026-0117": """Purchase Order PO-2026-0117
+Supplier: Acme Supplies Ltd.
+Amount: $1,250.00
+VAT: $250.00
+Items: 5x Widget A, 2x Widget B
+""",
+    "PO-2026-0200": """Purchase Order PO-2026-0200
+Supplier: Global Parts SA
+Amount: $3,400.00
+VAT: $680.00
+Items: 10x Gear X
+""",
+    "PO-2026-0300": """Purchase Order PO-2026-0300
+Supplier: TechVision GmbH
+Amount: $8,200.00
+VAT: $1,640.00
+Items: Server rack + config
+""",
+    "PO-2026-0400": """Purchase Order PO-2026-0400
+Supplier: SwissLogistics AG
+Amount: $15,000.00
+VAT: $3,000.00
+Items: Annual transport contract
+""",
+}
+
 OFF_TOPIC_KEYWORDS = [
     "blague", "joke", "chanson", "song", "poeme", "poem",
     "meteo", "weather", "recette", "recipe", "politique", "politics",
     "sport", "football", "film", "movie", "musique", "music",
     "raconte", "tell me", "explique-moi", "explain to me",
-    "bonjour", "salut", "hello", "hi ", "hey ",
-    "qui es-tu", "who are you", "ca va", "how are you",
+    
+    "qui es-tu", "who are you",
 ]
 
 INJECTION_KEYWORDS = [
@@ -195,6 +284,18 @@ def _detect_demo_invoice(text: str) -> str | None:
     return None
 
 
+def _detect_demo_po(text: str) -> str | None:
+    for po_id, full_text in DEMO_PURCHASE_ORDERS.items():
+        if po_id in text:
+            has_details = (
+                "Amount:" in text
+                or "Supplier:" in text
+            )
+            if not has_details:
+                return full_text
+    return None
+
+
 def _is_off_topic(text: str) -> bool:
     text_lower = text.lower()
     return any(kw in text_lower for kw in OFF_TOPIC_KEYWORDS)
@@ -207,6 +308,10 @@ def _is_injection_attempt(text: str) -> bool:
 
 def _has_invoice_id(text: str) -> bool:
     return bool(re.search(r"INV-\d{4}-\d{4}", text, re.IGNORECASE))
+
+
+def _has_po_reference(text: str) -> bool:
+    return bool(re.search(r"PO-\d{4}-\d{4}", text, re.IGNORECASE))
 
 
 def _has_amount(text: str) -> bool:
@@ -242,7 +347,7 @@ class ApertusInvoiceAgent:
             raise ValueError("GROQ_API_KEY is not set in .env")
 
         self.client = Groq(api_key=self.token)
-        self.max_steps = 8
+        self.max_steps = 10
 
     def _call_apertus(self, messages: List[Dict[str, Any]]) -> Any:
         """Call Groq with native tool calling."""
@@ -257,86 +362,11 @@ class ApertusInvoiceAgent:
         )
         return response.choices[0].message
 
-    def run(self, invoice_text: str) -> str:
-        # CASE 6: Prompt injection
-        if _is_injection_attempt(invoice_text):
-            return (
-                "I'm an invoice reconciliation agent. "
-                "I can't follow instructions that ask me to ignore my role. "
-                "Please provide a supplier invoice to reconcile."
-            )
-
-        # CASE 4: Off-topic
-        if _is_off_topic(invoice_text):
-            return (
-                "I'm an invoice reconciliation agent. I can only help you "
-                "reconcile supplier invoices against purchase orders. "
-                "Please provide an invoice with the following fields:\n"
-                "  - Invoice ID\n  - Supplier\n  - PO Reference\n"
-                "  - Amount\n  - VAT"
-            )
-
-        # CASE 5: Invalid input
-        if not _has_invoice_id(invoice_text) and not _has_amount(invoice_text):
-            return (
-                "I couldn't find an invoice in your message. "
-                "Please provide a supplier invoice with:\n"
-                "  - Invoice ID (e.g. INV-2026-0042)\n"
-                "  - Supplier name\n  - PO Reference\n"
-                "  - Amount\n  - VAT\n\n"
-                "Example:\n"
-                "Invoice #INV-2026-0042\n"
-                "Supplier: Acme Supplies Ltd.\n"
-                "PO Reference: PO-2026-0117\n"
-                "Amount: $1,250.00\n"
-                "VAT: $250.00"
-            )
-
-        # CASE 2: Demo ID only
-        demo_text = _detect_demo_invoice(invoice_text)
-        if demo_text:
-            invoice_text = demo_text
-            print("[DEMO] Injected full invoice text for the detected ID.")
-        else:
-            # CASE 3: Incomplete invoice
-            is_complete, missing = _is_complete_invoice(invoice_text)
-            if not is_complete:
-                missing_str = "\n".join(f"  - {field}" for field in missing)
-                return (
-                    "I found an invoice, but some required fields are missing:\n"
-                    f"{missing_str}\n\n"
-                    "Please provide the missing information so I can reconcile it."
-                )
-
-        # CASE 1: Complete invoice -> run the agent
-        system_prompt = """You are an autonomous Invoice Reconciliation Agent with fraud detection capabilities.
-
-You have access to these tools:
-1. extract_invoice - Extract structured data from an invoice text.
-2. find_purchase_order - Find a purchase order by its reference.
-3. compare_amounts - Compare invoice amounts/VAT against the PO.
-4. detect_fraud - Check for fraud signals (returns risk score 0-100).
-5. send_alert - Send an alert when anomalies are detected.
-6. mark_as_approved - Mark the invoice as approved when everything matches.
-
-WORKFLOW:
-1. Call extract_invoice with the FULL invoice text.
-2. Call find_purchase_order to locate the PO.
-3. Call compare_amounts to check for anomalies.
-4. Call detect_fraud to check for fraud signals (CRITICAL STEP).
-5. Based on results:
-   - If fraud risk is HIGH or CRITICAL -> call send_alert with a detailed reason (mention the risk score and top anomalies).
-   - If amounts mismatch -> call send_alert.
-   - If everything matches AND fraud risk is LOW -> call mark_as_approved.
-   - If fraud risk is MEDIUM -> call send_alert with the warnings for manual review.
-
-IMPORTANT: Always include the fraud risk score and level in your final summary.
-
-Use the tools step by step. When done, reply with a clear summary in plain text."""
-
+    def _run_agent_loop(self, system_prompt: str, user_message: str) -> str:
+        """Generic agent loop shared between workflows."""
         messages: List[Dict[str, Any]] = [
             {"role": "system", "content": system_prompt},
-            {"role": "user", "content": f"Reconcile this invoice:\n\n{invoice_text}"},
+            {"role": "user", "content": user_message},
         ]
 
         for step in range(self.max_steps):
@@ -345,14 +375,11 @@ Use the tools step by step. When done, reply with a clear summary in plain text.
             print(f"Assistant content: {message.content!r}")
             print(f"Tool calls: {message.tool_calls!r}")
 
-            # Si le modele a fini et repond en texte
             if not message.tool_calls:
                 return message.content or "Done."
 
-            # Ajouter le message assistant (avec tool_calls) a l'historique
             messages.append(message)
 
-            # Executer chaque tool call
             for tool_call in message.tool_calls:
                 tool_name = tool_call.function.name
                 try:
@@ -370,15 +397,165 @@ Use the tools step by step. When done, reply with a clear summary in plain text.
 
                 print(f"Tool {tool_name} -> {result}")
 
-                # Reponse de l'outil dans le format Groq/OpenAI
                 messages.append({
                     "role": "tool",
                     "tool_call_id": tool_call.id,
                     "name": tool_name,
-                    "content": json.dumps(result),
+                    "content": json.dumps(result, default=str),
                 })
 
         return "Error: max steps reached without a final answer."
+
+    def run(self, invoice_text: str) -> str:
+        # CASE 6: Prompt injection
+        if _is_injection_attempt(invoice_text):
+            return (
+                "I'm an invoice reconciliation agent. "
+                "I can't follow instructions that ask me to ignore my role. "
+                "Please provide a supplier invoice or purchase order to reconcile."
+            )
+
+        # CASE 4: Off-topic
+        # Only flag as off-topic if there are NO financial document indicators
+        has_financial_indicators = (
+            _has_invoice_id(invoice_text)
+            or _has_po_reference(invoice_text)
+            or _has_amount(invoice_text)
+            or bool(re.search(r"\b(invoice|facture|purchase order|bon de commande|rechnung|fattura|total|amount|montant|TVA|VAT)\b", invoice_text, re.IGNORECASE))
+        )
+
+        if _is_off_topic(invoice_text) and not has_financial_indicators:
+            return (
+                "I'm an invoice reconciliation agent. I can only help you "
+                "reconcile supplier invoices against purchase orders. "
+                "Please provide an invoice or PO with the following fields:\n"
+                "  - Invoice ID or PO Reference\n  - Supplier\n"
+                "  - Amount\n  - VAT"
+            )
+
+        # CASE 5: Invalid input
+        if (
+            not _has_invoice_id(invoice_text)
+            and not _has_po_reference(invoice_text)
+            and not _has_amount(invoice_text)
+        ):
+            return (
+                "I couldn't find an invoice or purchase order in your message. "
+                "Please provide a document with:\n"
+                "  - Invoice ID (e.g. INV-2026-0042) or PO Reference (e.g. PO-2026-0117)\n"
+                "  - Supplier name\n  - Amount\n  - VAT\n\n"
+                "Example:\n"
+                "Invoice #INV-2026-0042\n"
+                "Supplier: Acme Supplies Ltd.\n"
+                "PO Reference: PO-2026-0117\n"
+                "Amount: $1,250.00\n"
+                "VAT: $250.00"
+            )
+
+        # CASE 2: Demo invoice ID only
+        demo_invoice_text = _detect_demo_invoice(invoice_text)
+        demo_po_text = _detect_demo_po(invoice_text)
+
+        if demo_invoice_text:
+            invoice_text = demo_invoice_text
+            print("[DEMO] Injected full invoice text for the detected ID.")
+            mode = "invoice"
+        elif demo_po_text:
+            invoice_text = demo_po_text
+            print("[DEMO] Injected full purchase order text for the detected ID.")
+            mode = "purchase_order"
+        else:
+            # Use classify_document to determine the type
+            classification = classify_document(invoice_text)
+            mode = classification["document_type"]
+            print(f"[CLASSIFY] Document type: {mode} (confidence: {classification['confidence']:.2f}, method: {classification['method']})")
+
+            if mode == "unknown":
+                # Let the LLM try anyway with extract_generic - it may find fields
+                mode = "generic"
+
+            if mode == "invoice":
+                is_complete, missing = _is_complete_invoice(invoice_text)
+                if not is_complete:
+                    # Let the LLM try anyway with extract_generic
+                    mode = "generic"
+
+        # CASE 1: Run the appropriate workflow
+        if mode == "invoice":
+            system_prompt = """You are an autonomous Invoice Reconciliation Agent with fraud detection capabilities.
+
+You have access to these tools:
+1. extract_generic - UNIVERSAL EXTRACTION (use FIRST for any document).
+2. extract_invoice - Legacy invoice extractor.
+3. extract_purchase_order - Legacy PO extractor.
+4. find_purchase_order - Find a PO in the database.
+5. compare_amounts - Compare invoice amounts/VAT against the PO.
+6. detect_fraud - Check for fraud signals.
+7. send_alert - Send an alert when anomalies are detected.
+8. mark_as_approved - Mark the invoice as approved.
+
+WORKFLOW (invoice):
+1. Call extract_generic FIRST with the FULL invoice text.
+2. Call find_purchase_order with the extracted po_reference.
+3. Call compare_amounts to check for anomalies.
+4. Call detect_fraud with the extracted fields (invoice_id, supplier_name, amount, vat, po_reference, iban).
+5. Based on results:
+   - If fraud risk HIGH/CRITICAL -> send_alert with detailed reason.
+   - If amounts mismatch -> send_alert.
+   - If everything matches AND fraud risk LOW -> mark_as_approved.
+   - If fraud risk MEDIUM -> send_alert for manual review.
+
+IMPORTANT: Always include the fraud risk score, the currency, and the top anomalies in your final summary.
+
+Use the tools step by step. Reply with a clear summary in plain text."""
+
+            return self._run_agent_loop(
+                system_prompt,
+                f"Reconcile this invoice:\n\n{invoice_text}",
+            )
+
+        if mode == "purchase_order":
+            system_prompt = """You are an autonomous Purchase Order (PO) Analyzer.
+
+You have access to these tools:
+1. extract_generic - UNIVERSAL EXTRACTION (use FIRST).
+2. extract_purchase_order - Legacy PO extractor.
+3. find_purchase_order - Verify a PO exists in the database.
+
+WORKFLOW (purchase order):
+1. Call extract_generic FIRST with the FULL PO text.
+2. Call find_purchase_order with the extracted document_reference to verify it exists in the database.
+3. Report all extracted fields (reference, supplier, amount, currency, vat, items, dates).
+4. Note if the PO is missing from the database.
+5. Give a short assessment: is this PO valid and complete?
+
+When done, reply with a clear summary in plain text."""
+
+            return self._run_agent_loop(
+                system_prompt,
+                f"Analyze this purchase order:\n\n{invoice_text}",
+            )
+
+        # Generic / unknown: use extract_generic and report what we find
+        system_prompt = """You are a universal Financial Document Analyzer.
+
+You have access to:
+1. extract_generic - UNIVERSAL EXTRACTION: extract ALL fields from ANY financial document.
+2. classify_document - Classify the document type.
+
+WORKFLOW (any document):
+1. Call extract_generic FIRST with the FULL document text.
+2. Call classify_document if the type is unclear.
+3. Report all extracted fields (document_type, reference, supplier, amount, currency, vat, dates, iban, items).
+4. If the document is NOT a financial document, say so clearly.
+5. If some fields are missing, ask the user to provide them.
+
+When done, reply with a clear summary in plain text."""
+
+        return self._run_agent_loop(
+            system_prompt,
+            f"Analyze this document:\n\n{invoice_text}",
+        )
 
 
 __all__ = ["ApertusInvoiceAgent"]

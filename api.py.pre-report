@@ -1,0 +1,184 @@
+"""
+FastAPI wrapper for the Apertus Invoice Assistant.
+
+Supports text chat + file upload (OCR).
+
+Author: Anio Joseph
+Project: Hack Apertus - October 2026
+"""
+
+import os
+import shutil
+import tempfile
+import traceback
+from pathlib import Path
+
+from fastapi import FastAPI, File, HTTPException, UploadFile
+from fastapi.responses import HTMLResponse
+from fastapi.staticfiles import StaticFiles
+from pydantic import BaseModel
+
+from agent.apertus_agent import ApertusInvoiceAgent
+from tools.ocr_engine import check_ocr_available, extract_text_from_file
+
+
+BASE_DIR = Path(__file__).resolve().parent
+TEMPLATES_DIR = BASE_DIR / "templates"
+STATIC_DIR = BASE_DIR / "static"
+UPLOAD_DIR = BASE_DIR / "uploads"
+UPLOAD_DIR.mkdir(exist_ok=True)
+
+
+app = FastAPI(
+    title="Apertus Invoice Assistant",
+    description="Autonomous AI agent powered by Apertus (Swiss sovereign LLM).",
+    version="1.1.0",
+)
+
+if STATIC_DIR.exists():
+    app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
+
+
+_agent = None
+
+
+def get_agent():
+    global _agent
+    if _agent is None:
+        _agent = ApertusInvoiceAgent()
+    return _agent
+
+
+class ChatRequest(BaseModel):
+    message: str
+
+
+class ChatResponse(BaseModel):
+    reply: str
+
+
+class UploadResponse(BaseModel):
+    success: bool
+    text: str
+    filename: str
+    size_kb: float
+    error: str | None = None
+
+
+ALLOWED_EXTS = {".jpg", ".jpeg", ".png", ".tif", ".tiff", ".bmp", ".webp", ".pdf"}
+MAX_FILE_SIZE = 20 * 1024 * 1024  # 20 MB
+
+
+@app.get("/")
+def health():
+    return {
+        "status": "ok",
+        "service": "apertus-invoice-assistant",
+        "author": "Anio Joseph",
+        "model": os.getenv("APERTUS_MODEL", "unknown"),
+        "ocr": check_ocr_available(),
+    }
+
+
+@app.get("/chat", response_class=HTMLResponse)
+def chat_ui():
+    template_path = TEMPLATES_DIR / "chat.html"
+    if not template_path.exists():
+        raise HTTPException(status_code=500, detail="Template chat.html not found")
+    return HTMLResponse(content=template_path.read_text(encoding="utf-8"))
+
+
+@app.post("/chat", response_model=ChatResponse)
+def chat(request: ChatRequest):
+    print("\n=== POST /chat received ===")
+    print(f"Message: {request.message!r}")
+
+    message = request.message.strip()
+    if not message:
+        raise HTTPException(status_code=400, detail="message cannot be empty")
+
+    try:
+        print(">> Getting agent...")
+        agent = get_agent()
+        print(">> Agent OK. Running...")
+        reply = agent.run(message)
+        print(f">> Reply: {reply[:100]}")
+        return ChatResponse(reply=reply)
+    except Exception as exc:
+        print("\n=== TRACEBACK START ===")
+        traceback.print_exc()
+        print("=== TRACEBACK END ===\n")
+        raise HTTPException(status_code=500, detail=str(exc))
+
+
+@app.post("/upload", response_model=UploadResponse)
+async def upload_document(file: UploadFile = File(...)):
+    """
+    Receive a document (image or PDF), run OCR, return extracted text.
+    """
+    print(f"\n=== POST /upload received ===")
+    print(f"Filename: {file.filename}")
+    print(f"Content-Type: {file.content_type}")
+
+    if not file.filename:
+        raise HTTPException(status_code=400, detail="No filename provided")
+
+    ext = Path(file.filename).suffix.lower()
+    if ext not in ALLOWED_EXTS:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Unsupported file type: {ext}. Allowed: {sorted(ALLOWED_EXTS)}",
+        )
+
+    # Save uploaded file to a temp location
+    try:
+        with tempfile.NamedTemporaryFile(delete=False, suffix=ext, dir=str(UPLOAD_DIR)) as tmp:
+            shutil.copyfileobj(file.file, tmp)
+            tmp_path = tmp.name
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to save file: {e}")
+    finally:
+        file.file.close()
+
+    # Check size
+    size_bytes = os.path.getsize(tmp_path)
+    size_kb = round(size_bytes / 1024, 1)
+    print(f"Saved to: {tmp_path} ({size_kb} KB)")
+
+    if size_bytes > MAX_FILE_SIZE:
+        os.remove(tmp_path)
+        raise HTTPException(status_code=400, detail="File too large (max 20 MB)")
+
+    # Run OCR
+    try:
+        print(">> Running OCR...")
+        result = extract_text_from_file(tmp_path)
+        print(f">> OCR result: success={result.get('success')}, "
+              f"text_len={len(result.get('text', ''))}")
+    except Exception as e:
+        print(f"[ERROR] OCR failed: {e}")
+        traceback.print_exc()
+        result = {"success": False, "text": "", "error": str(e)}
+    finally:
+        # Clean up: delete the file after processing
+        try:
+            os.remove(tmp_path)
+        except Exception:
+            pass
+
+    if not result.get("success"):
+        return UploadResponse(
+            success=False,
+            text="",
+            filename=file.filename,
+            size_kb=size_kb,
+            error=result.get("error", "OCR failed"),
+        )
+
+    return UploadResponse(
+        success=True,
+        text=result.get("text", ""),
+        filename=file.filename,
+        size_kb=size_kb,
+        error=None,
+    )

@@ -35,3 +35,6 @@ data/*.db-journal
 
 # Test files
 test_*.py
+
+# Uploaded files (temporary)
+uploads/
