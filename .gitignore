@@ -35,3 +35,21 @@ data/*.db-journal
 
 # Test files
 test_*.py
+
+# Uploaded files (temporary)
+uploads/
+
+# Backup files (development)
+*.pre-*
+*.before-*
+*.broken-*
+*.full-backup
+*.hf-backup*
+*.json-backup
+*.sauvegarde
+
+# Test artifacts
+test_report.pdf
+
+# OCR tessdata (large files, installed locally)
+tessdata/

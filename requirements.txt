@@ -12,4 +12,4 @@ groq>=1.0.0
 # Fraud detection (ML)
 scikit-learn>=1.5.0
 numpy>=1.26.0
-pandas>=2.2.0
+pandas>=2.2.0python-multipart>=0.0.9
