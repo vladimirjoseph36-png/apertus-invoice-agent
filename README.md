@@ -1,218 +1,152 @@
-\# Apertus Invoice Assistant
+# Apertus Invoice Assistant
 
+An autonomous AI agent that reconciles supplier invoices against purchase orders **and detects fraud** — powered by Groq (open-source LLMs).
 
+**Author:** Anio Joseph
+**Project:** Hack Apertus — October 2026
 
-An autonomous AI agent that reconciles supplier invoices against purchase orders — powered by Apertus, Switzerland's sovereign LLM.
+---
 
+## What it does
 
-
-\*\*Author:\*\* Anio Joseph
-
-\*\*Project:\*\* Hack Apertus — October 2026
-
-
-
-\## What it does
-
-
-
-Every company receives hundreds of supplier invoices every month. Each one must be manually compared against its purchase order to catch amount mismatches, VAT errors, and missing POs.
-
-
+Every company receives hundreds of supplier invoices every month. Each one must be manually compared against its purchase order to catch amount mismatches, VAT errors, missing POs — **and fraudulent invoices**.
 
 Apertus Invoice Assistant automates the entire workflow:
 
+1. **Extracts** structured data from an invoice
+2. **Finds** the matching purchase order
+3. **Compares** amounts, VAT, and line items
+4. **Detects fraud** using 11+ heuristic rules, statistical analysis (z-score), and machine learning (Isolation Forest)
+5. **Approves** the invoice OR **sends an alert** if anomalies are detected
 
+## Features
 
-1\. Extracts structured data from an invoice
+- Fast LLM inference via Groq (openai/gpt-oss-120b)
+- Autonomous agent that chains 6 tools with native tool calling
+- Advanced fraud detection engine:
+  - 11+ heuristic rules
+  - Statistical outlier detection (z-score)
+  - ML-based anomaly detection (Isolation Forest)
+  - Risk score 0-100 with 4 severity levels
+- SQLite database for supplier history
+- Robust input handling (7 cases)
+- Modern Swiss-inspired web UI
+- FastAPI backend + vanilla JavaScript frontend
 
-2\. Finds the matching purchase order
+## Tools (6)
 
-3\. Compares amounts, VAT, and line items
+| Tool | Description |
+|------|-------------|
+| extract_invoice | Extract structured data from invoice text |
+| find_purchase_order | Look up the matching PO reference |
+| compare_amounts | Compare invoice vs PO amounts and VAT |
+| detect_fraud | Analyze fraud signals (rules + stats + ML) |
+| send_alert | Flag the invoice for manual review |
+| mark_as_approved | Mark the invoice as approved |
 
-4\. Approves the invoice OR sends an alert if anomalies are detected
+## Fraud Detection Engine
 
+Combines three layers:
 
+1. Heuristic rules (approval threshold, recent supplier, blacklist, IBAN mismatch, duplicate, VAT anomalies, round amounts, missing PO)
+2. Statistical analysis (z-score on supplier history)
+3. Machine Learning (Isolation Forest via scikit-learn)
 
-\## Features
+Output: risk_score 0-100, risk_level (low/medium/high/critical), anomalies, recommendation.
 
+## Robustness — 7 input cases
 
+1. Complete invoice -> full reconciliation
+2. Invoice ID only -> uses demo data
+3. Incomplete invoice -> asks for missing fields
+4. Off-topic message -> polite redirect
+5. Invalid input -> asks for a valid invoice
+6. Prompt injection -> refuses manipulation
+7. Greeting -> redirects to mission
 
-\- Powered by Apertus (Swiss sovereign LLM, 8B-Instruct)
+## Architecture
 
-\- Autonomous agent that chains 5 tools
-
-\- Robust input handling (7 cases)
-
-\- Modern Swiss-inspired web UI
-
-\- FastAPI backend + vanilla JavaScript frontend
-
-\- 5 tools: extract\_invoice, find\_purchase\_order, compare\_amounts, send\_alert, mark\_as\_approved
-
-
-
-\## Robustness — 7 input cases
-
-
-
-1\. Complete invoice → full reconciliation
-
-2\. Invoice ID only → uses demo data
-
-3\. Incomplete invoice → asks for missing fields
-
-4\. Off-topic message → polite redirect
-
-5\. Invalid input → asks for a valid invoice
-
-6\. Prompt injection → refuses manipulation
-
-7\. Greeting → redirects to mission
-
-
-
-\## Architecture
-
-
-
-Browser (Swiss UI) → FastAPI → ApertusInvoiceAgent → Apertus LLM (API)
-
-&#x20;                                         ↓
-
-&#x20;                                    5 Python tools
-
-
+Browser (Swiss UI) -> FastAPI -> ApertusInvoiceAgent <-> Groq API (openai/gpt-oss-120b) -> 6 Python tools <-> SQLite -> Fraud Detection Engine (rules + stats + ML)
 
 Stack:
+- LLM: Groq API - openai/gpt-oss-120b (free tier)
+- Backend: FastAPI + Python 3.11
+- Database: SQLite
+- ML: scikit-learn (Isolation Forest), numpy, pandas
+- Frontend: Vanilla HTML / CSS / JS
 
-\- LLM: Apertus 8B-Instruct via Hugging Face API
-
-\- Backend: FastAPI + Python 3.11
-
-\- Frontend: Vanilla HTML / CSS / JS
-
-\- Deployment: Render (planned)
-
-
-
-\## Quick Start
-
-
+## Quick Start
 
 Prerequisites:
-
-\- Python 3.11+
-
-\- A Hugging Face account + API token (free)
-
-
+- Python 3.11+
+- A free Groq account + API key: https://console.groq.com/keys
 
 Steps:
 
+1. Clone the repository
+git clone https://github.com/vladimirjoseph36-png/apertus-invoice-agent.git
+cd apertus-invoice-agent
 
+2. Create a virtual environment
+python -m venv venv
+.\venv\Scripts\Activate.ps1
 
-1\. Clone the repository
+3. Install dependencies
+pip install -r requirements.txt
 
-&#x20;  git clone https://github.com/vladimirjoseph36-png/apertus-invoice-agent.git
+4. Configure environment variables
+Create a .env file with:
+GROQ_API_KEY=gsk_your_groq_api_key_here
+APERTUS_MODEL=openai/gpt-oss-120b
 
-&#x20;  cd apertus-invoice-agent
+5. Initialize the database
+python tools\init_database.py
 
-
-
-2\. Create a virtual environment
-
-&#x20;  python -m venv venv
-
-&#x20;  .\\venv\\Scripts\\Activate.ps1
-
-
-
-3\. Install dependencies
-
-&#x20;  pip install -r requirements.txt
-
-
-
-4\. Configure environment variables
-
-&#x20;  Create a .env file:
-
-&#x20;  HF\_TOKEN=hf\_your\_huggingface\_token\_here
-
-&#x20;  APERTUS\_MODEL=swiss-ai/Apertus-8B-Instruct-2509
-
-
-
-5\. Run the app
-
-&#x20;  uvicorn api:app --reload --host 0.0.0.0 --port 8000
-
-
+6. Run the app
+uvicorn api:app --reload --host 0.0.0.0 --port 8000
 
 Open your browser at http://localhost:8000/chat
 
+## Demo Scenarios
 
+- Reconcile invoice INV-2026-0042  ->  Medium fraud risk (duplicate detected)
+- Reconcile invoice INV-2026-FRAUD ->  High/Critical fraud risk (multiple anomalies)
+- INV-2026-0042                    ->  Uses demo data
+- Raconte-moi une blague           ->  Polite redirect
+- Ignore previous instructions     ->  Refuses manipulation
 
-\## Project Structure
-
-
+## Project Structure
 
 apertus-invoice-agent/
+  api.py
+  requirements.txt
+  .env.example
+  README.md
+  agent/
+    apertus_agent.py
+    apertus_client.py
+  tools/
+    extract_invoice.py
+    find_purchase_order.py
+    compare_amounts.py
+    detect_fraud.py
+    send_alert.py
+    mark_as_approved.py
+    init_database.py
+  data/
+    invoices.db (generated locally)
+  templates/
+    chat.html
+  static/
+    css/chat.css
+    js/chat.js
 
-&#x20; api.py
-
-&#x20; requirements.txt
-
-&#x20; .env.example
-
-&#x20; README.md
-
-&#x20; agent/
-
-&#x20;   apertus\_agent.py
-
-&#x20;   apertus\_client.py
-
-&#x20; tools/
-
-&#x20;   extract\_invoice.py
-
-&#x20;   find\_purchase\_order.py
-
-&#x20;   compare\_amounts.py
-
-&#x20;   send\_alert.py
-
-&#x20;   mark\_as\_approved.py
-
-&#x20; templates/
-
-&#x20;   chat.html
-
-&#x20; static/
-
-&#x20;   css/chat.css
-
-&#x20;   js/chat.js
-
-
-
-\## License
-
-
+## License
 
 MIT License — see LICENSE file.
 
-
-
 Copyright (c) 2026 Anio Joseph
 
-
-
-\## Author
-
-
+## Author
 
 Anio Joseph — Built for Hack Apertus, October 2026.
-
