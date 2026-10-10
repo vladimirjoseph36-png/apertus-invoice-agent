@@ -354,6 +354,106 @@ async def upload_document(file: UploadFile = File(...)):
     )
 
 
+@app.get("/dashboard", response_class=HTMLResponse)
+def dashboard_ui():
+    template_path = TEMPLATES_DIR / "dashboard.html"
+    if not template_path.exists():
+        raise HTTPException(status_code=500, detail="Template dashboard.html not found")
+    return HTMLResponse(content=template_path.read_text(encoding="utf-8"))
+
+
+@app.get("/api/stats")
+def get_stats():
+    """Return aggregate statistics for the dashboard."""
+    conn = sqlite3.connect(str(DB_PATH))
+    conn.row_factory = sqlite3.Row
+    cur = conn.cursor()
+
+    cur.execute("SELECT COUNT(*) AS n FROM analyses")
+    total_docs = cur.fetchone()["n"]
+
+    cur.execute("SELECT COALESCE(SUM(amount), 0) AS total FROM analyses")
+    total_amount = cur.fetchone()["total"]
+
+    cur.execute("""
+        SELECT risk_level, COUNT(*) AS n
+        FROM analyses
+        WHERE risk_level IS NOT NULL
+        GROUP BY risk_level
+    """)
+    by_level = {row["risk_level"]: row["n"] for row in cur.fetchall()}
+
+    alerts = by_level.get("medium", 0) + by_level.get("high", 0) + by_level.get("critical", 0)
+
+    cur.execute("""
+        SELECT supplier_name, COUNT(*) AS n, COALESCE(SUM(amount), 0) AS total
+        FROM analyses
+        WHERE supplier_name IS NOT NULL
+        GROUP BY supplier_name
+        ORDER BY n DESC
+        LIMIT 5
+    """)
+    top_suppliers = [dict(row) for row in cur.fetchall()]
+
+    cur.execute("""
+        SELECT id, created_at, document_type, document_reference,
+               supplier_name, amount, currency, risk_score, risk_level, decision
+        FROM analyses
+        ORDER BY created_at DESC
+        LIMIT 20
+    """)
+    recent = [dict(row) for row in cur.fetchall()]
+
+    cur.execute("""
+        SELECT created_at, risk_score
+        FROM analyses
+        WHERE risk_score IS NOT NULL
+        ORDER BY created_at ASC
+        LIMIT 30
+    """)
+    scores = [dict(row) for row in cur.fetchall()]
+
+    conn.close()
+
+    return {
+        "total_docs": total_docs,
+        "total_amount": round(total_amount, 2),
+        "alerts": alerts,
+        "by_level": by_level,
+        "top_suppliers": top_suppliers,
+        "recent": recent,
+        "scores": scores,
+    }
+
+@app.post("/api/clear-analyses")
+def clear_analyses():
+    """Delete all rows from the analyses table. Used for demo reset."""
+    print("\n=== POST /api/clear-analyses ===")
+    conn = sqlite3.connect(str(DB_PATH))
+    cur = conn.cursor()
+    cur.execute("DELETE FROM analyses")
+    deleted = cur.rowcount
+    conn.commit()
+    conn.close()
+    print(f">> Deleted {deleted} analyses")
+    return {"success": True, "deleted": deleted}
+
+
+@app.delete("/api/analysis/{analysis_id}")
+def delete_analysis(analysis_id: str):
+    """Delete a single analysis by ID."""
+    print(f"\n=== DELETE /api/analysis/{analysis_id} ===")
+    conn = sqlite3.connect(str(DB_PATH))
+    cur = conn.cursor()
+    cur.execute("DELETE FROM analyses WHERE id = ?", (analysis_id,))
+    deleted = cur.rowcount
+    conn.commit()
+    conn.close()
+    if deleted == 0:
+        raise HTTPException(status_code=404, detail="Analysis not found")
+    print(f">> Deleted analysis {analysis_id}")
+    return {"success": True, "deleted": deleted, "id": analysis_id}
+
 @app.get("/api/report/{analysis_id}.pdf")
 def download_report(analysis_id: str):
     """Generate and return the PDF report for the given analysis."""

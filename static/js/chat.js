@@ -339,3 +339,155 @@ document.addEventListener('DOMContentLoaded', () => {
   input.focus();
   console.log('[APERTUS] Chat initialized and listeners attached');
 });
+
+/* --------------------------------------------------------------------------
+   SOUND ENGINE (Web Audio API - no external files)
+   -------------------------------------------------------------------------- */
+
+(function soundEngine() {
+  console.log('[SOUND] soundEngine initialized');
+
+  const toggleBtn = document.getElementById('sound-toggle');
+
+  // Sound state (persisted in localStorage)
+  let soundEnabled = localStorage.getItem('apertus-sound') !== 'off';
+
+  // Audio context (lazy-initialized on first user gesture)
+  let audioCtx = null;
+
+  function getCtx() {
+    if (!audioCtx) {
+      try {
+        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      } catch (e) {
+        console.warn('[SOUND] Web Audio API not available:', e);
+        return null;
+      }
+    }
+    return audioCtx;
+  }
+
+  // Generic tone player
+  function playTone({ freq = 440, duration = 0.15, type = 'sine', volume = 0.15, sweep = null }) {
+    if (!soundEnabled) return;
+    const ctx = getCtx();
+    if (!ctx) return;
+
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+
+    osc.type = type;
+    osc.frequency.setValueAtTime(freq, ctx.currentTime);
+
+    if (sweep) {
+      osc.frequency.exponentialRampToValueAtTime(sweep, ctx.currentTime + duration);
+    }
+
+    gain.gain.setValueAtTime(volume, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + duration);
+
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+
+    osc.start(ctx.currentTime);
+    osc.stop(ctx.currentTime + duration);
+  }
+
+  // --- Sound effects ---
+  const SOUNDS = {
+    send:    () => playTone({ freq: 660, duration: 0.08, type: 'sine', volume: 0.12, sweep: 880 }),
+    receive: () => playTone({ freq: 880, duration: 0.10, type: 'sine', volume: 0.10, sweep: 1046 }),
+    success: () => {
+      playTone({ freq: 523, duration: 0.10, type: 'sine', volume: 0.12 });
+      setTimeout(() => playTone({ freq: 659, duration: 0.10, type: 'sine', volume: 0.12 }), 100);
+      setTimeout(() => playTone({ freq: 784, duration: 0.15, type: 'sine', volume: 0.12 }), 200);
+    },
+    alert:   () => {
+      playTone({ freq: 440, duration: 0.15, type: 'square', volume: 0.08 });
+      setTimeout(() => playTone({ freq: 330, duration: 0.20, type: 'square', volume: 0.08 }), 160);
+    },
+    critical: () => {
+      for (let i = 0; i < 3; i++) {
+        setTimeout(() => playTone({ freq: 880, duration: 0.08, type: 'square', volume: 0.10 }), i * 150);
+      }
+    },
+  };
+
+  // Expose the sound API globally so chat.js can trigger sounds
+  window.ApertusSound = SOUNDS;
+
+  // --- Toggle button ---
+  function updateToggleUI() {
+    if (!toggleBtn) return;
+    if (soundEnabled) {
+      toggleBtn.textContent = '🔊';
+      toggleBtn.classList.remove('muted');
+      toggleBtn.title = 'Sound: ON (click to mute)';
+    } else {
+      toggleBtn.textContent = '🔇';
+      toggleBtn.classList.add('muted');
+      toggleBtn.title = 'Sound: OFF (click to enable)';
+    }
+  }
+
+  if (toggleBtn) {
+    toggleBtn.addEventListener('click', () => {
+      soundEnabled = !soundEnabled;
+      localStorage.setItem('apertus-sound', soundEnabled ? 'on' : 'off');
+      updateToggleUI();
+      if (soundEnabled) playTone({ freq: 880, duration: 0.1, type: 'sine', volume: 0.12 });
+    });
+  }
+
+  updateToggleUI();
+
+  // Resume audio on first user gesture (browsers require this)
+  document.addEventListener('click', () => {
+    const ctx = getCtx();
+    if (ctx && ctx.state === 'suspended') ctx.resume();
+  }, { once: true });
+
+  // --- Hook into the chat flow ---
+  // 1. Send sound when user submits
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && !e.shiftKey && document.activeElement === document.getElementById('input')) {
+      SOUNDS.send();
+    }
+  });
+
+  const sendBtn = document.getElementById('send');
+  if (sendBtn) {
+    sendBtn.addEventListener('click', () => SOUNDS.send());
+  }
+
+  // 2. Override fetch to detect responses
+  const originalFetch = window.fetch;
+  window.fetch = async function (...args) {
+    const url = typeof args[0] === 'string' ? args[0] : '';
+    const response = await originalFetch.apply(this, args);
+
+    // Sound on /chat response
+    if (url.endsWith('/chat') && response.ok) {
+      const cloned = response.clone();
+      cloned.json().then((data) => {
+        if (data && data.reply) {
+          SOUNDS.receive();
+          // Detect fraud level in reply
+          const text = data.reply.toLowerCase();
+          if (text.includes('critical') || text.includes('escalat')) {
+            setTimeout(() => SOUNDS.critical(), 300);
+          } else if (text.includes('high') || text.includes('alert')) {
+            setTimeout(() => SOUNDS.alert(), 300);
+          }
+        }
+      }).catch(() => {});
+    }
+
+    // Sound on PDF download click
+    if (url.includes('/api/report/') && response.ok) {
+      SOUNDS.success();
+    }
+
+    return response;
+  };
+})();
