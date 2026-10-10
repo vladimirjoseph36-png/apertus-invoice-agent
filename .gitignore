@@ -18,3 +18,20 @@ Thumbs.db
 
 # Logs
 *.log
+
+# Database (generated locally)
+data/*.db
+data/*.db-journal
+
+# Backup files
+*.bak
+*.bak2
+*.bak3
+*.hf-backup*
+*.pre-fraud
+*.json-backup
+*.before-fraud-schema
+*.sauvegarde
+
+# Test files
+test_*.py
