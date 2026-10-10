@@ -53,3 +53,6 @@ test_report.pdf
 
 # OCR tessdata (large files, installed locally)
 tessdata/
+
+# Dashboard backups
+templates/dashboard.html.*
