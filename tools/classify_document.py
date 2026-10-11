@@ -24,6 +24,7 @@ from groq import Groq
 INVOICE_KEYWORDS = [
     r"\binvoice\b", r"\bfacture\b", r"\brechnung\b", r"\bfattura\b",
     r"INV-\d{4}-\d{4}", r"\bbill\b", r"\btax invoice\b",
+    r"\bN°\s*[A-Z]+-\d{4}", r"\bFA-\d{4}", r"\bFAC-\d{4}", r"\bfacture\s+n",
 ]
 
 PO_KEYWORDS = [
@@ -63,11 +64,7 @@ def _rule_based_classify(text: str) -> Dict[str, Any]:
         "document_type": "unknown",
         "confidence": 0.3,
         "method": "rules",
-        "details": {
-            "invoice_hits": invoice_hits,
-            "po_hits": po_hits,
-            "unknown_hits": unknown_hits,
-        },
+        "details": {"invoice_hits": invoice_hits, "po_hits": po_hits, "unknown_hits": unknown_hits},
     }
 
 
@@ -76,15 +73,9 @@ def _llm_based_classify(text: str) -> Dict[str, Any]:
     model = os.getenv("APERTUS_MODEL", "openai/gpt-oss-120b")
 
     if not api_key:
-        return {
-            "document_type": "unknown",
-            "confidence": 0.0,
-            "method": "llm",
-            "details": {"error": "GROQ_API_KEY not set"},
-        }
+        return {"document_type": "unknown", "confidence": 0.0, "method": "llm", "details": {"error": "GROQ_API_KEY not set"}}
 
     client = Groq(api_key=api_key)
-
     prompt = (
         "Classify this financial document. Respond ONLY with one word among:\n"
         "- invoice\n- purchase_order\n- unknown\n\n"
@@ -107,36 +98,18 @@ def _llm_based_classify(text: str) -> Dict[str, Any]:
         else:
             doc_type = "unknown"
 
-        return {
-            "document_type": doc_type,
-            "confidence": 0.85,
-            "method": "llm",
-            "details": {"raw_answer": answer},
-        }
+        return {"document_type": doc_type, "confidence": 0.85, "method": "llm", "details": {"raw_answer": answer}}
     except Exception as e:
-        return {
-            "document_type": "unknown",
-            "confidence": 0.0,
-            "method": "llm",
-            "details": {"error": str(e)},
-        }
+        return {"document_type": "unknown", "confidence": 0.0, "method": "llm", "details": {"error": str(e)}}
 
 
 def classify_document(document_text: str) -> Dict[str, Any]:
-    """
-    Classify a financial document (hybrid rules + LLM).
-    """
     if not document_text or not document_text.strip():
-        return {
-            "document_type": "unknown",
-            "confidence": 1.0,
-            "method": "rules",
-            "details": {"reason": "empty input"},
-        }
+        return {"document_type": "unknown", "confidence": 1.0, "method": "rules", "details": {"reason": "empty input"}}
 
     rule_result = _rule_based_classify(document_text)
 
-    if rule_result["confidence"] >= 0.8:
+    if rule_result["confidence"] >= 0.7:
         return rule_result
 
     llm_result = _llm_based_classify(document_text)
@@ -152,11 +125,11 @@ if __name__ == "__main__":
         ("Invoice #INV-2026-0042 Supplier: Acme Amount: 1250", "invoice"),
         ("Purchase Order PO-2026-0117 Supplier: Acme Amount: 1250", "purchase_order"),
         ("Bon de commande PO-2026-0200 Fournisseur: Global Parts", "purchase_order"),
-        ("Facture INV-2026-0010 Total: 500", "invoice"),
+        ("Facture N°FA-2026-0891 Fournisseur: Muller", "invoice"),
         ("Some random text without keywords", "unknown"),
     ]
 
     for text, expected in tests:
         result = classify_document(text)
         status = "OK" if result["document_type"] == expected else "MISMATCH"
-        print(f"[{status}] '{text[:40]}...' -> {result['document_type']} ({result['confidence']:.2f}, {result['method']})")
+        print(f"[{status}] '{text[:40]}...' -> {result['document_type']}")

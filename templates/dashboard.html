@@ -126,9 +126,9 @@
       transform: translateY(-2px);
     }
     .clear-btn {
-      color: var(--red);
-      border-color: var(--red);
-      background: rgba(227, 6, 19, 0.05);
+      color: var(--red) !important;
+      border-color: var(--red) !important;
+      background: rgba(227, 6, 19, 0.05) !important;
     }
     .clear-btn:hover {
       background: var(--red) !important;
@@ -292,7 +292,7 @@
     .badge.critical { background: rgba(220, 38, 38, 0.15); color: #ef4444; border: 1px solid rgba(220, 38, 38, 0.4); box-shadow: 0 0 12px rgba(220, 38, 38, 0.5); }
     .badge.unknown { background: rgba(136, 146, 176, 0.15); color: var(--text-dim); border: 1px solid rgba(136, 146, 176, 0.3); }
 
-    /* === BOUTON CORBEILLE === */
+    /* BOUTON CORBEILLE */
     .trash-btn {
       display: inline-flex;
       align-items: center;
@@ -326,6 +326,7 @@
     .corner-tr { top: 16px; right: 16px; border-left: none; border-bottom: none; }
     .corner-bl { bottom: 16px; left: 16px; border-right: none; border-top: none; }
     .corner-br { bottom: 16px; right: 16px; border-left: none; border-top: none; }
+
     @media (max-width: 900px) {
       .charts { grid-template-columns: 1fr; }
       body { padding: 16px; }
@@ -517,21 +518,22 @@
     }
 
     // === BOUTON CLEAR ALL ===
-    document.getElementById('clear-btn').addEventListener('click', async () => {
-      if (!confirm('Delete ALL analyses? This action is irreversible.')) return;
-      try {
-        const res = await fetch('/api/clear-analyses', { method: 'POST' });
-        const data = await res.json();
-        if (data.success) {
-          alert('Cleared ' + data.deleted + ' analyses');
-          loadStats();
-        } else {
-          alert('Failed to clear');
-        }
-      } catch (err) {
-        alert('Error: ' + err.message);
-      }
-    });
+    const clearBtn = document.getElementById('clear-btn');
+    if (clearBtn) {
+      clearBtn.addEventListener('click', async () => {
+        if (!confirm('Delete ALL analyses? This action is irreversible.')) return;
+        try {
+          const res = await fetch('/api/clear-analyses', { method: 'POST' });
+          const data = await res.json();
+          if (data.success) {
+            alert('Cleared ' + data.deleted + ' analyses');
+            loadStats();
+          } else {
+            alert('Failed to clear');
+          }
+        } catch (err) { alert('Error: ' + err.message); }
+      });
+    }
 
     // === BOUTON CORBEILLE (par ligne) ===
     document.addEventListener('click', async (e) => {
