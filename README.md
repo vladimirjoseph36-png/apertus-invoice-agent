@@ -7,6 +7,24 @@ An autonomous AI agent that reconciles supplier invoices against purchase orders
 
 ---
 
+## Tests
+
+[![Tests](https://github.com/vladimirjoseph36-png/apertus-invoice-agent/actions/workflows/tests.yml/badge.svg)](https://github.com/vladimirjoseph36-png/apertus-invoice-agent/actions/workflows/tests.yml)
+
+Run the test suite with:
+
+    pytest tests/ -v
+
+**25 unit tests, 100% pass:**
+
+- `test_api.py` - 7 tests (FastAPI endpoints)
+- `test_classify_document.py` - 6 tests (document classification, FR/EN)
+- `test_detect_fraud.py` - 5 tests (fraud detection engine)
+- `test_ocr_engine.py` - 3 tests (OCR stack)
+- `test_pdf_report.py` - 4 tests (PDF generation)
+
+---
+
 ## What it does
 
 Every company receives hundreds of supplier invoices every month. Each one must be manually compared against its purchase order to catch amount mismatches, VAT errors, missing POs — **and fraudulent invoices**.
@@ -30,8 +48,9 @@ Apertus Invoice Assistant automates the entire workflow:
   - Risk score 0-100 with 4 severity levels
 - SQLite database for supplier history
 - Robust input handling (7 cases)
-- Modern Swiss-inspired web UI
+- Modern Swiss-inspired web UI + live dashboard
 - FastAPI backend + vanilla JavaScript frontend
+- **25 unit tests + CI via GitHub Actions**
 
 ## Tools (6)
 
@@ -74,6 +93,7 @@ Stack:
 - Database: SQLite
 - ML: scikit-learn (Isolation Forest), numpy, pandas
 - Frontend: Vanilla HTML / CSS / JS
+- Tests: pytest (25 tests) + GitHub Actions CI
 
 ## Quick Start
 
@@ -84,26 +104,35 @@ Prerequisites:
 Steps:
 
 1. Clone the repository
-git clone https://github.com/vladimirjoseph36-png/apertus-invoice-agent.git
-cd apertus-invoice-agent
+
+    git clone https://github.com/vladimirjoseph36-png/apertus-invoice-agent.git
+    cd apertus-invoice-agent
 
 2. Create a virtual environment
-python -m venv venv
-.\venv\Scripts\Activate.ps1
+
+    python -m venv venv
+    .\venv\Scripts\Activate.ps1
 
 3. Install dependencies
-pip install -r requirements.txt
+
+    pip install -r requirements.txt
 
 4. Configure environment variables
+
 Create a .env file with:
-GROQ_API_KEY=gsk_your_groq_api_key_here
-APERTUS_MODEL=openai/gpt-oss-120b
+
+    GROQ_API_KEY=gsk_your_groq_api_key_here
+    APERTUS_MODEL=openai/gpt-oss-120b
 
 5. Initialize the database
-python tools\init_database.py
+
+    python tools\init_database.py
+    python tools\migrate_analyses_table.py
+    python tools\migrate_po_table.py
 
 6. Run the app
-uvicorn api:app --reload --host 0.0.0.0 --port 8000
+
+    uvicorn api:app --reload --host 0.0.0.0 --port 8000
 
 Open your browser at http://localhost:8000/chat
 
@@ -117,29 +146,47 @@ Open your browser at http://localhost:8000/chat
 
 ## Project Structure
 
-apertus-invoice-agent/
-  api.py
-  requirements.txt
-  .env.example
-  README.md
-  agent/
-    apertus_agent.py
-    apertus_client.py
-  tools/
-    extract_invoice.py
-    find_purchase_order.py
-    compare_amounts.py
-    detect_fraud.py
-    send_alert.py
-    mark_as_approved.py
-    init_database.py
-  data/
-    invoices.db (generated locally)
-  templates/
-    chat.html
-  static/
-    css/chat.css
-    js/chat.js
+    apertus-invoice-agent/
+      api.py
+      requirements.txt
+      pytest.ini
+      .env.example
+      README.md
+      agent/
+        apertus_agent.py
+        apertus_client.py
+      tools/
+        extract_invoice.py
+        find_purchase_order.py
+        compare_amounts.py
+        detect_fraud.py
+        send_alert.py
+        mark_as_approved.py
+        classify_document.py
+        extract_generic.py
+        extract_purchase_order.py
+        ocr_engine.py
+        pdf_report.py
+        init_database.py
+        migrate_analyses_table.py
+        migrate_po_table.py
+      data/
+        invoices.db (generated locally)
+      templates/
+        chat.html
+        dashboard.html
+      static/
+        css/chat.css
+        js/chat.js
+      tests/
+        test_api.py
+        test_classify_document.py
+        test_detect_fraud.py
+        test_ocr_engine.py
+        test_pdf_report.py
+      .github/
+        workflows/
+          tests.yml
 
 ## License
 
