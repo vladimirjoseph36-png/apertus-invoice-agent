@@ -23,11 +23,10 @@ from fastapi.responses import HTMLResponse, Response
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
-from agent.apertus_agent import ApertusInvoiceAgent
+from agent.apertus_agent import ApertusInvoiceAgent, DEMO_INVOICES, DEMO_PURCHASE_ORDERS
 from tools.ocr_engine import check_ocr_available, extract_text_from_file
 from tools.pdf_report import generate_report_pdf
 from tools.extract_generic import extract_generic
-from agent.apertus_agent import DEMO_INVOICES, DEMO_PURCHASE_ORDERS
 
 
 BASE_DIR = Path(__file__).resolve().parent
@@ -153,28 +152,21 @@ def _guess_risk_level(reply: str) -> str:
 
 
 def _guess_risk_score(reply: str) -> int:
-    """
-    Extract the risk score from the agent reply.
-    Tries multiple patterns to handle different formats.
-    """
+    """Extract the risk score from the agent reply."""
     text = reply or ""
 
-    # Pattern 1: "30 / 100" or "30/100"
     m = re.search(r"(\d+)\s*/\s*100", text)
     if m:
         return int(m.group(1))
 
-    # Pattern 2: "Risk Score:** 30" or "Risk Score: 30"
     m = re.search(r"risk\s*score[^\d]{0,20}(\d+)", text, re.IGNORECASE)
     if m:
         return int(m.group(1))
 
-    # Pattern 3: "Score de risque : 30"
     m = re.search(r"score\s*de\s*risque[^\d]{0,20}(\d+)", text, re.IGNORECASE)
     if m:
         return int(m.group(1))
 
-    # Pattern 4: fallback - use the level to guess a representative score
     r = text.lower()
     if "critical" in r:
         return 85
@@ -188,17 +180,119 @@ def _guess_risk_score(reply: str) -> int:
     return 0
 
 
-def _save_full_analysis(message: str, reply: str, source: str = "chat") -> str:
+def _extract_fraud_json(reply: str) -> str | None:
     """
-    Extract fields from the raw message via extract_generic,
-    then save a complete analysis row to the DB.
+    Extract fraud anomalies from the agent reply.
+    Tries 3 strategies:
+    1. Extract the raw dict from "Tool detect_fraud -> {...}"
+    2. Look for anomaly codes (UNKNOWN_SUPPLIER, etc.)
+    3. Parse the "Key Anomalies" section from the summary text
+    """
+    text = reply or ""
 
-    If the message contains a demo invoice ID, use the full demo text
-    so that all fields are properly extracted.
-    """
+    # STRATEGY 1: Extract the raw dict from "Tool detect_fraud -> {...}"
+    m = re.search(r"Tool detect_fraud -> (\{.*?\})(?:\s*\n|$)", text, re.DOTALL)
+    if m:
+        raw = m.group(1)
+        # Try direct JSON parse
+        try:
+            parsed = json.loads(raw)
+            return json.dumps(parsed)
+        except Exception:
+            pass
+        # Try converting single quotes to double quotes
+        try:
+            raw2 = raw.replace("'", '"')
+            parsed = json.loads(raw2)
+            return json.dumps(parsed)
+        except Exception:
+            pass
+        # Try ast.literal_eval
+        try:
+            import ast
+            parsed = ast.literal_eval(raw)
+            return json.dumps(parsed)
+        except Exception:
+            pass
+
+    # STRATEGY 2: Look for anomaly codes in the text
+    anomalies = []
+    code_map = {
+        "POSSIBLE_DUPLICATE": ("high", "Possible duplicate invoice detected"),
+        "UNKNOWN_SUPPLIER": ("high", "Unknown supplier"),
+        "JUST_UNDER_APPROVAL_THRESHOLD": ("medium", "Amount just under the approval threshold"),
+        "IBAN_MISMATCH": ("critical", "IBAN mismatch detected"),
+        "ANOMALOUS_VAT_RATE": ("medium", "Anomalous VAT rate"),
+        "ROUND_AMOUNT": ("low", "Round amount suspicion"),
+        "MISSING_PO": ("medium", "Missing purchase order"),
+        "ML_ANOMALY": ("medium", "Anomaly detected by Isolation Forest"),
+    }
+    for code, (severity, msg) in code_map.items():
+        if code in text:
+            anomalies.append({"code": code, "severity": severity, "message": msg})
+
+    if anomalies:
+        return json.dumps({"anomalies": anomalies})
+
+    # STRATEGY 3: Parse the "Key Anomalies" section from the summary
+    # Look for lines like:
+    #   **Key Anomalies:**
+    #   1. **Amount just below approval threshold** – ...
+    #   2. **Unknown supplier** – ...
+    section_match = re.search(
+        r"(?:key\s*anomalies|anomalies\s*detected|anomalies)[^\n]*\n((?:\s*\d+\..*\n?)+)",
+        text,
+        re.IGNORECASE,
+    )
+    if section_match:
+        lines = section_match.group(1).strip().split("\n")
+        for line in lines:
+            title_match = re.search(r"\*\*(.+?)\*\*", line)
+            if title_match:
+                title = title_match.group(1).strip()
+                title_lower = title.lower()
+                if any(k in title_lower for k in ("unknown", "not present", "not found", "missing")):
+                    severity = "high"
+                elif any(k in title_lower for k in ("duplicate", "iban", "threshold", "zero vat", "anomalous", "high")):
+                    severity = "medium"
+                else:
+                    severity = "low"
+                anomalies.append({
+                    "code": "DETECTED",
+                    "severity": severity,
+                    "message": title,
+                })
+
+    if anomalies:
+        return json.dumps({"anomalies": anomalies})
+
+    # STRATEGY 4: Generic fallback — look for bullet points after "anomalies"
+    generic_match = re.search(
+        r"anomalies[^\n]*\n((?:\s*[•\-\*].*\n?)+)",
+        text,
+        re.IGNORECASE,
+    )
+    if generic_match:
+        lines = generic_match.group(1).strip().split("\n")
+        for line in lines:
+            cleaned = line.strip().lstrip("•-*").strip()
+            if cleaned:
+                anomalies.append({
+                    "code": "DETECTED",
+                    "severity": "medium",
+                    "message": cleaned,
+                })
+
+    if anomalies:
+        return json.dumps({"anomalies": anomalies})
+
+    return None
+
+
+def _save_full_analysis(message: str, reply: str, source: str = "chat") -> str:
+    """Extract fields from the raw message, then save a complete analysis row."""
     print(">> _save_full_analysis: extracting fields via LLM...")
 
-    # Check if the message references a demo invoice/PO
     text_to_extract = message
     for demo_id, demo_text in DEMO_INVOICES.items():
         if demo_id in message:
@@ -220,8 +314,13 @@ def _save_full_analysis(message: str, reply: str, source: str = "chat") -> str:
     print(f">> Document type: {doc_type}")
     print(f">> Fields: {fields}")
 
-    score_match = re.search(r"(\d+)\s*/\s*100", reply or "")
-    risk_score = int(score_match.group(1)) if score_match else 0
+    risk_score = _guess_risk_score(reply)
+    risk_level = _guess_risk_level(reply)
+    fraud_json = _extract_fraud_json(reply)
+
+    print(f">> Extracted risk_score: {risk_score}")
+    print(f">> Extracted risk_level: {risk_level}")
+    print(f">> Extracted fraud_json: {fraud_json}")
 
     analysis = {
         "source": source,
@@ -234,9 +333,9 @@ def _save_full_analysis(message: str, reply: str, source: str = "chat") -> str:
         "vat": fields.get("vat"),
         "po_reference": fields.get("po_reference"),
         "fields_json": json.dumps(fields, default=str),
-        "fraud_json": None,
+        "fraud_json": fraud_json,
         "risk_score": risk_score,
-        "risk_level": _guess_risk_level(reply),
+        "risk_level": risk_level,
         "decision": _guess_decision(reply),
     }
 
@@ -425,9 +524,10 @@ def get_stats():
         "scores": scores,
     }
 
+
 @app.post("/api/clear-analyses")
 def clear_analyses():
-    """Delete all rows from the analyses table. Used for demo reset."""
+    """Delete all rows from the analyses table."""
     print("\n=== POST /api/clear-analyses ===")
     conn = sqlite3.connect(str(DB_PATH))
     cur = conn.cursor()
@@ -453,6 +553,7 @@ def delete_analysis(analysis_id: str):
         raise HTTPException(status_code=404, detail="Analysis not found")
     print(f">> Deleted analysis {analysis_id}")
     return {"success": True, "deleted": deleted, "id": analysis_id}
+
 
 @app.get("/api/report/{analysis_id}.pdf")
 def download_report(analysis_id: str):

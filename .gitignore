@@ -1,4 +1,4 @@
-﻿# Secrets
+# Secrets
 .env
 
 # Python
@@ -59,3 +59,18 @@ templates/dashboard.html.*
 
 # Double project folder (cleanup)
 apertus-invoice-agent.BACKUP/
+
+# Poppler (PDF to image, installed locally)
+poppler/
+
+# Poppler (PDF to image, installed locally)
+poppler/
+
+# Test artifacts
+test_report.pdf
+
+# Double project folder (cleanup)
+apertus-invoice-agent.BACKUP/
+
+# Poppler (PDF to image, installed locally)
+poppler/

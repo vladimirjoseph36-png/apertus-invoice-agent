@@ -2,6 +2,7 @@
 OCR engine for extracting text from images and PDFs.
 
 Auto-detects the local tessdata folder and configures TESSDATA_PREFIX.
+Auto-detects Poppler for PDF processing.
 
 Supports: JPEG, PNG, TIFF, BMP, WEBP, PDF
 Languages: French, English, German, Italian, Spanish
@@ -35,6 +36,30 @@ if os.name == "nt":
         if os.path.exists(p):
             os.environ.setdefault("TESSERACT_CMD", p)
             break
+
+
+# --- Configuration Poppler (for PDF to image conversion) ---
+
+if os.name == "nt":
+    LOCAL_POPPLER = PROJECT_ROOT / "poppler" / "Library" / "bin"
+    if LOCAL_POPPLER.exists():
+        os.environ["POPPLER_PATH"] = str(LOCAL_POPPLER)
+        print(f"[OCR] Poppler found locally: {LOCAL_POPPLER}")
+    else:
+        common_paths = [
+            Path(r"C:\Program Files\poppler\Library\bin"),
+            Path(r"C:\poppler\Library\bin"),
+            Path(r"C:\Program Files (x86)\poppler\Library\bin"),
+        ]
+        for p in common_paths:
+            if p.exists():
+                os.environ["POPPLER_PATH"] = str(p)
+                print(f"[OCR] Poppler found at: {p}")
+                break
+        else:
+            print("[OCR] WARNING: Poppler not found.")
+            print("[OCR] Install Poppler in ./poppler/Library/bin/ for PDF support.")
+
 
 try:
     import pytesseract
@@ -92,7 +117,18 @@ def ocr_pdf(pdf_path: str, lang: str = SUPPORTED_LANGS, max_pages: int = 5) -> D
         return {"success": False, "text": "", "error": f"file not found: {pdf_path}"}
 
     try:
-        pages = convert_from_path(pdf_path, dpi=200, first_page=1, last_page=max_pages)
+        poppler_path = os.environ.get("POPPLER_PATH")
+        if poppler_path:
+            pages = convert_from_path(
+                pdf_path,
+                dpi=200,
+                first_page=1,
+                last_page=max_pages,
+                poppler_path=poppler_path,
+            )
+        else:
+            pages = convert_from_path(pdf_path, dpi=200, first_page=1, last_page=max_pages)
+
         full_text = []
         for i, page_img in enumerate(pages, 1):
             page_text = pytesseract.image_to_string(page_img, lang=lang)
@@ -138,6 +174,7 @@ def check_ocr_available() -> Dict[str, Any]:
         "pdf2image": PDF2IMAGE_AVAILABLE,
         "tesseract_cmd": os.environ.get("TESSERACT_CMD", "not set"),
         "tessdata_prefix": os.environ.get("TESSDATA_PREFIX", "not set"),
+        "poppler_path": os.environ.get("POPPLER_PATH", "not set"),
     }
 
     if PYTESSERACT_AVAILABLE:

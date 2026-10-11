@@ -49,14 +49,11 @@ TOOLS_SCHEMA = [
         "type": "function",
         "function": {
             "name": "extract_generic",
-            "description": "UNIVERSAL EXTRACTION: extract ALL fields from ANY financial document (invoice, PO, quote) using the LLM. Works with any format. Returns document_type and a fields dict. ALWAYS call this FIRST.",
+            "description": "UNIVERSAL EXTRACTION: extract ALL fields from ANY financial document (invoice, PO, quote) using the LLM. Returns document_type and a fields dict. ALWAYS call this FIRST.",
             "parameters": {
                 "type": "object",
                 "properties": {
-                    "document_text": {
-                        "type": "string",
-                        "description": "The full text of the document to extract data from.",
-                    }
+                    "document_text": {"type": "string", "description": "The full text of the document."},
                 },
                 "required": ["document_text"],
             },
@@ -70,46 +67,9 @@ TOOLS_SCHEMA = [
             "parameters": {
                 "type": "object",
                 "properties": {
-                    "document_text": {
-                        "type": "string",
-                        "description": "The full text of the document to classify.",
-                    }
+                    "document_text": {"type": "string"},
                 },
                 "required": ["document_text"],
-            },
-        },
-    },
-    {
-        "type": "function",
-        "function": {
-            "name": "extract_invoice",
-            "description": "Legacy extractor for invoices (regex-based). Prefer extract_generic.",
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "invoice_text": {
-                        "type": "string",
-                        "description": "The full invoice text to extract data from.",
-                    }
-                },
-                "required": ["invoice_text"],
-            },
-        },
-    },
-    {
-        "type": "function",
-        "function": {
-            "name": "extract_purchase_order",
-            "description": "Legacy extractor for POs (regex-based). Prefer extract_generic.",
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "po_text": {
-                        "type": "string",
-                        "description": "The full text of the purchase order.",
-                    }
-                },
-                "required": ["po_text"],
             },
         },
     },
@@ -121,10 +81,7 @@ TOOLS_SCHEMA = [
             "parameters": {
                 "type": "object",
                 "properties": {
-                    "po_reference": {
-                        "type": "string",
-                        "description": "The purchase order reference (e.g. PO-2026-0117).",
-                    }
+                    "po_reference": {"type": "string"},
                 },
                 "required": ["po_reference"],
             },
@@ -151,7 +108,7 @@ TOOLS_SCHEMA = [
         "type": "function",
         "function": {
             "name": "detect_fraud",
-            "description": "Analyze an invoice for fraud signals. Returns a risk score 0-100, level, and detailed anomalies. po_reference and iban can be null if not available.",
+            "description": "Analyze an invoice for fraud signals. Returns a risk score 0-100, level, and detailed anomalies. CALL THIS ON EVERY INVOICE.",
             "parameters": {
                 "type": "object",
                 "properties": {
@@ -196,19 +153,6 @@ TOOLS_SCHEMA = [
         },
     },
 ]
-
-TOOLS_DESCRIPTION = """
-Available tools:
-1. extract_generic(document_text: str) -> dict
-2. classify_document(document_text: str) -> dict
-3. extract_invoice(invoice_text: str) -> dict
-4. extract_purchase_order(po_text: str) -> dict
-5. find_purchase_order(po_reference: str) -> dict
-6. compare_amounts(invoice_amount, invoice_vat, po_amount, po_vat) -> dict
-7. detect_fraud(invoice_id, supplier_name, amount, vat, po_reference, iban) -> dict
-8. send_alert(invoice_id: str, reason: str) -> dict
-9. mark_as_approved(invoice_id: str) -> dict
-"""
 
 DEMO_INVOICES: Dict[str, str] = {
     "INV-2026-0042": """Invoice #INV-2026-0042
@@ -259,7 +203,6 @@ OFF_TOPIC_KEYWORDS = [
     "meteo", "weather", "recette", "recipe", "politique", "politics",
     "sport", "football", "film", "movie", "musique", "music",
     "raconte", "tell me", "explique-moi", "explain to me",
-    
     "qui es-tu", "who are you",
 ]
 
@@ -275,9 +218,7 @@ def _detect_demo_invoice(text: str) -> str | None:
     for invoice_id, full_text in DEMO_INVOICES.items():
         if invoice_id in text:
             has_details = (
-                "Amount:" in text
-                or "Supplier:" in text
-                or "PO Reference:" in text
+                "Amount:" in text or "Supplier:" in text or "PO Reference:" in text
             )
             if not has_details:
                 return full_text
@@ -287,10 +228,7 @@ def _detect_demo_invoice(text: str) -> str | None:
 def _detect_demo_po(text: str) -> str | None:
     for po_id, full_text in DEMO_PURCHASE_ORDERS.items():
         if po_id in text:
-            has_details = (
-                "Amount:" in text
-                or "Supplier:" in text
-            )
+            has_details = ("Amount:" in text or "Supplier:" in text)
             if not has_details:
                 return full_text
     return None
@@ -337,10 +275,7 @@ class ApertusInvoiceAgent:
     """Robust invoice reconciliation agent powered by Groq."""
 
     def __init__(self) -> None:
-        self.model_id = os.getenv(
-            "APERTUS_MODEL",
-            "openai/gpt-oss-120b",
-        )
+        self.model_id = os.getenv("APERTUS_MODEL", "openai/gpt-oss-120b")
         self.token = os.getenv("GROQ_API_KEY", "")
 
         if not self.token:
@@ -350,7 +285,6 @@ class ApertusInvoiceAgent:
         self.max_steps = 10
 
     def _call_apertus(self, messages: List[Dict[str, Any]]) -> Any:
-        """Call Groq with native tool calling."""
         response = self.client.chat.completions.create(
             model=self.model_id,
             messages=messages,
@@ -363,11 +297,17 @@ class ApertusInvoiceAgent:
         return response.choices[0].message
 
     def _run_agent_loop(self, system_prompt: str, user_message: str) -> str:
-        """Generic agent loop shared between workflows."""
+        """Generic agent loop with mandatory workflow enforcement."""
         messages: List[Dict[str, Any]] = [
             {"role": "system", "content": system_prompt},
             {"role": "user", "content": user_message},
         ]
+
+        # Track which tools have been called
+        called_tools: List[str] = []
+        detect_fraud_called = False
+        nudge_count = 0
+        max_nudges = 3
 
         for step in range(self.max_steps):
             print(f"\n--- Step {step + 1} ---")
@@ -375,13 +315,31 @@ class ApertusInvoiceAgent:
             print(f"Assistant content: {message.content!r}")
             print(f"Tool calls: {message.tool_calls!r}")
 
+            # If no tool calls AND detect_fraud was not called -> nudge the agent
             if not message.tool_calls:
+                if not detect_fraud_called and nudge_count < max_nudges:
+                    nudge_count += 1
+                    print(f">> NUDGE #{nudge_count}: agent tried to finish without detect_fraud")
+                    messages.append(message)
+                    messages.append({
+                        "role": "user",
+                        "content": (
+                            "STOP. You have NOT called detect_fraud yet. "
+                            "This is MANDATORY. Call detect_fraud NOW with the "
+                            "extracted fields (invoice_id, supplier_name, amount, vat, "
+                            "po_reference, iban). Do not write a summary until you "
+                            "have the fraud risk score."
+                        ),
+                    })
+                    continue
                 return message.content or "Done."
 
             messages.append(message)
 
             for tool_call in message.tool_calls:
                 tool_name = tool_call.function.name
+                called_tools.append(tool_name)
+
                 try:
                     tool_args = json.loads(tool_call.function.arguments)
                 except json.JSONDecodeError:
@@ -394,6 +352,9 @@ class ApertusInvoiceAgent:
                         result = TOOLS[tool_name](**tool_args)
                     except Exception as e:
                         result = {"error": str(e)}
+
+                if tool_name == "detect_fraud":
+                    detect_fraud_called = True
 
                 print(f"Tool {tool_name} -> {result}")
 
@@ -416,12 +377,15 @@ class ApertusInvoiceAgent:
             )
 
         # CASE 4: Off-topic
-        # Only flag as off-topic if there are NO financial document indicators
         has_financial_indicators = (
             _has_invoice_id(invoice_text)
             or _has_po_reference(invoice_text)
             or _has_amount(invoice_text)
-            or bool(re.search(r"\b(invoice|facture|purchase order|bon de commande|rechnung|fattura|total|amount|montant|TVA|VAT)\b", invoice_text, re.IGNORECASE))
+            or bool(re.search(
+                r"\b(invoice|facture|purchase order|bon de commande|rechnung|fattura|total|amount|montant|TVA|VAT)\b",
+                invoice_text,
+                re.IGNORECASE,
+            ))
         )
 
         if _is_off_topic(invoice_text) and not has_financial_indicators:
@@ -465,19 +429,16 @@ class ApertusInvoiceAgent:
             print("[DEMO] Injected full purchase order text for the detected ID.")
             mode = "purchase_order"
         else:
-            # Use classify_document to determine the type
             classification = classify_document(invoice_text)
             mode = classification["document_type"]
             print(f"[CLASSIFY] Document type: {mode} (confidence: {classification['confidence']:.2f}, method: {classification['method']})")
 
             if mode == "unknown":
-                # Let the LLM try anyway with extract_generic - it may find fields
                 mode = "generic"
 
             if mode == "invoice":
                 is_complete, missing = _is_complete_invoice(invoice_text)
                 if not is_complete:
-                    # Let the LLM try anyway with extract_generic
                     mode = "generic"
 
         # CASE 1: Run the appropriate workflow
@@ -485,27 +446,45 @@ class ApertusInvoiceAgent:
             system_prompt = """You are an autonomous Invoice Reconciliation Agent with fraud detection capabilities.
 
 You have access to these tools:
-1. extract_generic - UNIVERSAL EXTRACTION (use FIRST for any document).
-2. extract_invoice - Legacy invoice extractor.
-3. extract_purchase_order - Legacy PO extractor.
-4. find_purchase_order - Find a PO in the database.
-5. compare_amounts - Compare invoice amounts/VAT against the PO.
-6. detect_fraud - Check for fraud signals.
-7. send_alert - Send an alert when anomalies are detected.
-8. mark_as_approved - Mark the invoice as approved.
+1. extract_generic - UNIVERSAL EXTRACTION (call FIRST).
+2. find_purchase_order - Find a PO in the database.
+3. compare_amounts - Compare invoice amounts/VAT against the PO.
+4. detect_fraud - Check for fraud signals. RETURNS THE RISK SCORE.
+5. send_alert - Send an alert when anomalies are detected.
+6. mark_as_approved - Mark the invoice as approved.
 
-WORKFLOW (invoice):
-1. Call extract_generic FIRST with the FULL invoice text.
-2. Call find_purchase_order with the extracted po_reference.
-3. Call compare_amounts to check for anomalies.
-4. Call detect_fraud with the extracted fields (invoice_id, supplier_name, amount, vat, po_reference, iban).
-5. Based on results:
-   - If fraud risk HIGH/CRITICAL -> send_alert with detailed reason.
-   - If amounts mismatch -> send_alert.
-   - If everything matches AND fraud risk LOW -> mark_as_approved.
-   - If fraud risk MEDIUM -> send_alert for manual review.
+============================================================
+MANDATORY WORKFLOW - YOU MUST CALL EVERY TOOL BELOW IN ORDER
+============================================================
+STEP 1: Call extract_generic with the FULL invoice text.
+STEP 2: Call find_purchase_order with the extracted po_reference.
+STEP 3: Call compare_amounts with the amounts from step 1 and step 2.
+STEP 4: Call detect_fraud with ALL extracted fields:
+        - invoice_id
+        - supplier_name
+        - amount
+        - vat
+        - po_reference (may be null)
+        - iban (may be null)
+        *** DO NOT SKIP THIS STEP. It is the most important. ***
+STEP 5: Based on the fraud score from step 4:
+        - score >= 70 OR level CRITICAL -> call send_alert (critical fraud risk)
+        - score >= 40 OR level HIGH -> call send_alert (high fraud risk)
+        - score >= 20 OR level MEDIUM -> call send_alert (manual review)
+        - amounts mismatch -> call send_alert
+        - everything matches AND score < 20 -> call mark_as_approved
 
-IMPORTANT: Always include the fraud risk score, the currency, and the top anomalies in your final summary.
+============================================================
+RULES
+============================================================
+- You MUST call detect_fraud on EVERY invoice. No exceptions.
+- You MUST call send_alert OR mark_as_approved at the end.
+- If you finish without calling detect_fraud, the analysis is INVALID.
+- Your final summary MUST include:
+  * The fraud risk score (e.g. "Risk score: 55/100")
+  * The fraud risk level (LOW / MEDIUM / HIGH / CRITICAL)
+  * The list of detected anomalies (if any)
+  * The decision (approved / alerted / escalated)
 
 Use the tools step by step. Reply with a clear summary in plain text."""
 
@@ -518,13 +497,12 @@ Use the tools step by step. Reply with a clear summary in plain text."""
             system_prompt = """You are an autonomous Purchase Order (PO) Analyzer.
 
 You have access to these tools:
-1. extract_generic - UNIVERSAL EXTRACTION (use FIRST).
-2. extract_purchase_order - Legacy PO extractor.
-3. find_purchase_order - Verify a PO exists in the database.
+1. extract_generic - UNIVERSAL EXTRACTION (call FIRST).
+2. find_purchase_order - Verify a PO exists in the database.
 
 WORKFLOW (purchase order):
 1. Call extract_generic FIRST with the FULL PO text.
-2. Call find_purchase_order with the extracted document_reference to verify it exists in the database.
+2. Call find_purchase_order with the extracted document_reference.
 3. Report all extracted fields (reference, supplier, amount, currency, vat, items, dates).
 4. Note if the PO is missing from the database.
 5. Give a short assessment: is this PO valid and complete?
@@ -536,7 +514,7 @@ When done, reply with a clear summary in plain text."""
                 f"Analyze this purchase order:\n\n{invoice_text}",
             )
 
-        # Generic / unknown: use extract_generic and report what we find
+        # Generic / unknown
         system_prompt = """You are a universal Financial Document Analyzer.
 
 You have access to:
