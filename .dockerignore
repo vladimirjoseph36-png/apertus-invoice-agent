@@ -1,0 +1,52 @@
+# === Python ===
+__pycache__/
+*.py[cod]
+*.egg-info/
+venv/
+.venv/
+.pytest_cache/
+
+# === Secrets (NEVER include) ===
+.env
+*.env.bak
+
+# === Local databases ===
+data/*.db
+data/*.db-journal
+
+# === Large binaries (installed inside the container) ===
+tessdata/
+poppler/
+
+# === Uploads ===
+uploads/
+
+# === Git ===
+.git/
+.gitignore
+
+# === Backups ===
+*.bak
+*.bak2
+*.backup*
+*.pre-*
+*.OLD
+apertus-invoice-agent.BACKUP/
+
+# === IDE ===
+.vscode/
+.idea/
+
+# === OS ===
+.DS_Store
+Thumbs.db
+
+# === Test artifacts ===
+test_report.pdf
+test_*.py
+
+# === Logs ===
+*.log
+
+# === Documentation ===
+docs/

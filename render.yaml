@@ -1,0 +1,23 @@
+services:
+  - type: web
+    name: apertus-invoice-agent
+    runtime: python
+    plan: free
+    buildCommand: "bash build.sh"
+    startCommand: "uvicorn api:app --host 0.0.0.0 --port $PORT"
+    envVars:
+      - key: USE_LOCAL_APERTUS
+        value: "false"
+      - key: GROQ_API_KEY
+        sync: false
+      - key: APERTUS_MODEL
+        value: openai/gpt-oss-120b
+      - key: OLLAMA_MODEL
+        value: MichelRosselli/apertus:8b-instruct-2509-q4_k_m
+      - key: OLLAMA_HOST
+        value: http://localhost:11434
+      - key: PYTHON_VERSION
+        value: "3.11.9"
+      - key: TESSDATA_PREFIX
+        value: "/usr/share/tesseract-ocr/5/tessdata"
+    healthCheckPath: /
