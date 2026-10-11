@@ -1,15 +1,13 @@
-# Web framework
 fastapi>=0.115.0
 uvicorn[standard]>=0.32.0
 pydantic>=2.0.0
-
-# Environment
+python-multipart>=0.0.9
 python-dotenv>=1.0.0
-
-# LLM provider
 groq>=1.0.0
-
-# Fraud detection (ML)
 scikit-learn>=1.5.0
 numpy>=1.26.0
-pandas>=2.2.0python-multipart>=0.0.9
+pandas>=2.2.0
+pytesseract>=0.3.13
+Pillow>=10.0.0
+pdf2image>=1.17.0
+reportlab>=4.0.0
