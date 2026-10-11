@@ -12,12 +12,12 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Set up Python
+      - name: Set up Python 3.11
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
 
-      - name: Install system dependencies (Tesseract)
+      - name: Install Tesseract
         run: |
           sudo apt-get update
           sudo apt-get install -y tesseract-ocr tesseract-ocr-fra tesseract-ocr-deu tesseract-ocr-ita tesseract-ocr-spa poppler-utils
@@ -27,6 +27,12 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
           pip install pytest pytest-asyncio httpx
+
+      - name: Initialize database
+        run: |
+          python tools/init_database.py
+          python tools/migrate_analyses_table.py
+          python tools/migrate_po_table.py
 
       - name: Run tests
         env:
